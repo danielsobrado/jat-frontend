@@ -1,0 +1,126 @@
+/* Custom scrollbar for the modal */
+.batch-details-modal .ant-modal-body {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.batch-details-modal .ant-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.batch-details-modal .ant-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.batch-details-modal .ant-modal-body::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 3px;
+}
+
+/* Focus styles */
+.batch-details-modal *:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+.batch-details-modal .ant-modal-close:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+  border-radius: 9999px;
+}
+
+/* Processing overlay animation */
+@keyframes pulse {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+.batch-details-modal .processing-overlay {
+  animation: pulse 2s ease-in-out infinite;
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(1px);
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Better table focus styles */
+.batch-details-modal tr:focus-within {
+  background-color: rgba(59, 130, 246, 0.05);
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: -2px;
+}
+
+/* Sticky header shadow */
+.batch-details-modal thead {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Better modal transitions */
+.batch-details-modal.ant-modal-wrap {
+  transition: opacity 0.2s ease-out;
+}
+
+.batch-details-modal .ant-modal {
+  transition: transform 0.2s ease-out;
+}
+
+.batch-details-modal .ant-modal-mask {
+  transition: opacity 0.2s ease-out;
+}
+
+/* Improve result display */
+.batch-details-modal pre {
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+}
+
+/* Better focus indication for interactive elements */
+.batch-details-modal button:focus-visible,
+.batch-details-modal [role="button"]:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}
+
+/* Screen reader only text */
+.batch-details-modal .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ARIA keyboard navigation styles */
+.batch-details-modal [tabindex="0"]:not(:focus-visible):focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Improved status badges */
+.batch-details-modal [role="status"] {
+  transition: all 0.2s ease-out;
+}
+
+/* Loading state transitions */
+.batch-details-modal .ant-spin {
+  transition: opacity 0.2s ease-out;
+}
+
+/* Focus order improvements */
+.batch-details-modal [tabindex]:not([tabindex="-1"]) {
+  transition: box-shadow 0.2s ease-out;
+}

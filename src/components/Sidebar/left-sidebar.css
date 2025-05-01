@@ -1,0 +1,239 @@
+/* Make sure this is in your left-sidebar.css */
+.left-sidebar-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 70px;
+    border-radius: 0;
+    border-right: 1px solid #e8e8e8;
+    background: white;
+    transition: width 0.3s cubic-bezier(0.2, 0, 0, 1) 0s !important;
+    overflow: hidden;
+    height: 100%;
+  }
+  
+  .sidebar-open {
+    width: 180px !important;
+  }
+
+  /* --- Antd Menu Item Styling --- */
+  .left-sidebar-menu .ant-menu-item,
+  .left-sidebar-menu .ant-menu-submenu-title {
+    display: flex !important;
+    align-items: center !important;
+    /* Use min-height instead of fixed height for flexibility, adjust value as needed */
+    min-height: 40px !important;
+    height: auto !important; /* Allow height to adjust naturally if content wraps, used with min-height */
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    line-height: normal !important;
+    padding-left: 20px !important;
+  }
+  
+  /* --- Icon Styling (Ensure Consistent Size) --- */
+  /* Target the container AND the SVG for robustness */
+  .left-sidebar-menu .ant-menu-item-icon,
+  .left-sidebar-menu .ant-menu-submenu-title .ant-menu-item-icon {
+    /* Ensure container doesn't shrink and centers icon */
+    flex-shrink: 0;
+    display: inline-flex !important; /* Use inline-flex for better alignment control */
+    align-items: center;
+    justify-content: center;
+    /* Define container size slightly larger than icon if needed */
+    /* width: 24px !important; */
+    /* height: 24px !important; */
+    line-height: 1 !important; /* Crucial */
+    margin-right: 10px !important; /* Ensure consistent space */
+  }
+  
+  .left-sidebar-menu .ant-menu-item-icon svg, /* Target SVG directly */
+  .left-sidebar-menu .ant-menu-submenu-title .ant-menu-item-icon svg { /* Target SVG in submenu title */
+    width: 20px !important;  /* <<< SET YOUR DESIRED ICON WIDTH */
+    height: 20px !important; /* <<< SET YOUR DESIRED ICON HEIGHT */
+    /* font-size: 20px !important; */ /* Font-size less reliable for SVG */
+    display: block !important; /* Helps prevent extra space */
+    flex-shrink: 0; /* Prevent shrinking */
+    transition: none !important; /* No size transitions */
+    vertical-align: middle; /* Align vertically */
+  }
+
+  /* Style Antd Label Container (.ant-menu-title-content contains our LeftSidebarItem output) */
+  .left-sidebar-menu .ant-menu-item-icon + .ant-menu-title-content {
+    /* margin-left: 10px !important; */ /* Space now handled by icon container's margin-right */
+    flex-grow: 1;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    line-height: normal !important; /* Ensure consistency */
+    vertical-align: middle; /* Align vertically */
+  }
+
+  /* --- Label Styling (Focus on visibility/opacity) --- */
+  .left-panel-label {
+    display: inline-block; /* Keep it in the flow */
+    white-space: nowrap;
+    vertical-align: middle; /* Align with icon */
+    /* Control visibility via opacity and visibility */
+    visibility: hidden;
+    opacity: 0;
+    /* Adjust transition for smoothness */
+    transition: opacity 0.2s 0.1s ease-in-out !important; /* Added slight delay back */
+  }
+
+  .sidebar-open .left-panel-label {
+    visibility: visible;
+    opacity: 1;
+    /* transition-delay: 0.1s !important; */ /* Delay now in main transition */
+  }
+
+  /* --- Bottom Menu Specific --- */
+  .left-sidebar-menu.bottom-menu.ant-menu-light.ant-menu-root.ant-menu-inline {
+    border-top: none !important;
+    box-shadow: none !important;
+  }
+  .left-sidebar-menu.bottom-menu .ant-menu-item:first-child {
+     border-top: none !important;
+     margin-top: 0 !important;
+  }
+  .left-sidebar-menu.bottom-menu .ant-menu-item {
+      border-top: none !important;
+  }
+  .left-sidebar-container > .ant-row:last-child {
+       border-top: none !important;
+  }
+
+  .custom-menu.ant-menu-root.ant-menu-inline {
+    background: white;
+    border: 0px;
+  
+    .ant-menu-item::after {
+      left: 0;
+      right: unset;
+    }
+  
+    .ant-menu-item-group-title {
+      font-size: 12px;
+      padding: 12px 16px;
+      color: grey;
+    }
+  
+    .ant-menu-item-icon + span {
+      margin-left: 8px;
+    }
+  
+    .ant-menu-item {
+      height: 30px;
+      line-height: 30px;
+      margin-top: 2px;
+      padding: 0 16px !important;
+    }
+  
+    .ant-menu-item:hover,
+    .ant-menu-item-selected {
+      .side-panel-icons {
+        color: black;
+      }
+    }
+  
+    .ant-menu-item-selected {
+      .ant-menu-title-content {
+        font-weight: 600;
+  
+        .ant-badge {
+          color: black;
+        }
+      }
+    }
+  
+    .ant-menu-item-active {
+      .ant-menu-title-content {
+        .ant-badge {
+          color: black;
+        }
+      }
+    }
+  
+    .ant-menu-item:not(:last-child) {
+      margin-bottom: 0px;
+    }
+  
+    .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
+      border-right: 1px solid transparent;
+    }
+  }
+  
+  .custom-menu-with-description {
+    &.custom-menu.ant-menu-root.ant-menu-inline .ant-menu-item {
+      height: 50px;
+      margin-top: 4px;
+    }
+  
+    &.custom-menu.ant-menu-root.ant-menu-inline
+      .ant-menu-item-selected
+      .ant-menu-title-content {
+      font-weight: 400;
+    }
+  }
+
+  /* Add consistent transitions for all menu items */
+  .left-sidebar-menu .ant-menu-item,
+  .left-sidebar-menu .ant-menu-item-only-child,
+  .left-sidebar-menu .ant-menu-item-group-title,
+  .left-sidebar-menu .ant-menu-item-group-list,
+  .left-sidebar-menu .ant-menu-sub,
+  .left-sidebar-menu .ant-menu-inline,
+  .left-sidebar-menu .ant-menu-title-content,
+  .left-sidebar-menu .ant-menu-submenu,
+  .left-sidebar-menu .ant-menu-submenu-inline,
+  .left-sidebar-menu .ant-menu-submenu-title {
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1) 0s !important;
+  }
+
+  /* Ensure consistent hover behavior */
+  .left-sidebar-menu .ant-menu-item:hover,
+  .left-sidebar-menu .ant-menu-submenu:hover {
+    background-color: rgba(0, 0, 0, 0.025) !important;
+  }
+
+  /* Fix the hover-out behavior */
+  .left-sidebar-container:not(.sidebar-open) .ant-menu-submenu-inline:hover,
+  .left-sidebar-container:not(.sidebar-open) .ant-menu-item:hover {
+    width: auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Ensure submenu items collapse instead of disappearing */
+  .left-sidebar-container:not(.sidebar-open) .ant-menu-submenu-arrow {
+    opacity: 0 !important;
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1) 0s !important;
+  }
+
+  /* For submenu when sidebar IS open */
+  .sidebar-open .ant-menu-submenu-inline {
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 180px !important; /* Maintain consistent width when expanded */
+  }
+
+  /* Make sure submenu arrows are visible when sidebar is open */
+  .sidebar-open .ant-menu-submenu-arrow {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: inline-block !important;
+  }
+
+  /* For submenu when sidebar is NOT open */
+  .left-sidebar-container:not(.sidebar-open) .ant-menu-submenu-inline {
+    visibility: hidden !important;
+    opacity: 1 !important; /* Change to 0 to truly hide */
+    width: 90px !important;
+  }
+
+  /* For menu title content when sidebar is open */
+  .sidebar-open .ant-menu-title-content {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: inline-block !important;
+  }
+

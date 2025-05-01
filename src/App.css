@@ -1,0 +1,76 @@
+/* App.css */
+/* Main app container */
+.app-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Header styles */
+  .app-header {
+    background-color: #1e40af; /* primary-900 */
+    color: white;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .app-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  /* Main content area */
+  .app-content {
+    display: flex;
+    flex: 1;
+    margin-top: 64px; /* Header height */
+    position: relative;
+    height: calc(100vh - 64px);
+  }
+  
+  /* Sidebar wrapper - fixed width plus transition */
+  .sidebar-wrapper {
+    position: fixed;
+    width: 60px;
+    height: calc(100vh - 64px);
+    z-index: 5;
+  }
+  
+  /* Main content styles - adjust margin to sidebar width */
+  .main-content {
+    flex: 1;
+    padding: 24px;
+    margin-left: 60px; /* Match sidebar width */
+    transition: margin-left 0.3s ease-in-out;
+    background-color: #f9fafb; /* gray-50 */
+    overflow-y: auto;
+    width: calc(100% - 60px); /* Ensure content takes remaining space */
+  }
+  
+  /* When sidebar is expanded, adjust margin of content */
+  .main-content.sidebar-expanded {
+    margin-left: 230px;
+    width: calc(100% - 230px);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .sidebar-wrapper {
+      position: fixed;
+      z-index: 5;
+      height: calc(100vh - 64px);
+    }
+    
+    .main-content {
+      margin-left: 0;
+      padding: 16px;
+    }
+  }
