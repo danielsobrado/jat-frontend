@@ -1,29 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'; // Remove unused useState and related hooks if not needed elsewhere
 import { ClassificationForm } from '../components/ClassificationForm';
 import { ApiClient } from '../api/types';
-import { useAuth } from '../context/AuthContext';
+// Remove useAuth if checkPermission is no longer needed here
+// import { useAuth } from '../context/AuthContext';
 
 interface TestPageProps {
   apiClient: ApiClient;
 }
 
 const TestPage: React.FC<TestPageProps> = ({ apiClient }) => {
-  const { checkPermission } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [description, setDescription] = useState('');
+  // Remove state and handlers related to the deleted button
+  // const { checkPermission } = useAuth();
+  // const [isLoading, setIsLoading] = useState(false);
+  // const [description, setDescription] = useState('');
 
-  const handleSubmit = () => {
-    if (!checkPermission('classify:item')) {
-      return;
-    }
-    
-    if (description.trim() === '') {
-      return;
-    }
-    
-    setIsLoading(true);
-    // Form submission is handled by ClassificationForm component
-  };
+  // const handleSubmit = () => { ... }; // This handler is no longer needed
 
   return (
     <div className="page-container">
@@ -33,21 +24,12 @@ const TestPage: React.FC<TestPageProps> = ({ apiClient }) => {
           Use this tool to test classification of individual items
         </p>
       </div>
-      
+
+      {/* The ClassificationForm component already contains the necessary inputs and its own submit button */}
       <ClassificationForm apiClient={apiClient} />
-      <button
-        className={`px-6 py-3 rounded-lg font-medium text-white ${
-          isLoading || description.trim() === '' || !checkPermission('classify:item')
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2'
-        }`}
-        onClick={handleSubmit}
-        disabled={isLoading || description.trim() === '' || !checkPermission('classify:item')}
-        data-testid="classify-button"
-        title={!checkPermission('classify:item') ? "You don't have permission to classify items" : ""}
-      >
-        {isLoading ? 'Classifying...' : 'Classify'}
-      </button>
+
+      {/* The redundant button has been removed from here */}
+
     </div>
   );
 };
