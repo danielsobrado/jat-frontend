@@ -29,3 +29,4 @@ web/package-lock.json
 .history
 logs/debug.log.old
 postcss.config.cjs
+dist/assets/

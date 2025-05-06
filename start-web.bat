@@ -3,7 +3,6 @@ setlocal EnableDelayedExpansion
 
 REM Constants
 set "CONFIG_FILE=config\config.yaml"
-set "WEB_DIR=web"
 set "SCRIPT_NAME=%~nx0"
 set "REQUIRED_NODE_VERSION=16"
 
@@ -137,13 +136,11 @@ if "%~1"=="-log" set "USE_LOG_FILE=1"
     echo Starting development server on port %SERVER_PORT%...
     
     REM Start development server with appropriate logging
-    cd %WEB_DIR%
     if defined USE_LOG_FILE (
-        pnpm run dev > "..\logs\web.log" 2>&1
+        pnpm run dev > "logs\web.log" 2>&1
     ) else (
         pnpm run dev
     )
-    cd ..
     
     if errorlevel 1 (
         if defined USE_LOG_FILE (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // Remove unused useState and related hooks if not needed elsewhere
+import React from 'react'; // Remove unused useState and related hooks if not needed elsewhere
 import { ClassificationForm } from '../components/ClassificationForm';
 import { ApiClient } from '../api/types';
 // Remove useAuth if checkPermission is no longer needed here
