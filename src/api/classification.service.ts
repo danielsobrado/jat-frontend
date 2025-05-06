@@ -14,7 +14,7 @@ export class ClassificationService {
   async classify(description: string, systemCode: string = 'UNSPSC', additionalContext?: string): Promise<ClassificationResult> {
     const requestId = Math.random().toString(36).substring(7);
     try {
-      const response = await this.core.fetchWithTimeout(formatEndpoint('/classify/auto'), {
+      const response = await this.core.fetchWithTimeout(formatEndpoint('/classify'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
