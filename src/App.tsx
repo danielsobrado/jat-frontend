@@ -59,26 +59,20 @@ function App() {
   useEffect(() => {
     const fetchRagStatus = async () => {
        try {
-            // Assuming getConfig is safe to call even when logged out for this flag
             const config = await apiClient.getConfig();
             
-            // Log the full config for debugging
-            console.log("[DEBUG] Full config response:", JSON.stringify(config));
+            // Log the full config for debugging, pretty-printed
+            console.log("[DEBUG] Full config response from apiClient.getConfig():", JSON.stringify(config, null, 2));
             
-            const isRagEnabled = !!(
-              config?.database?.ragEnabled || 
-              config?.ragEnabled 
-            );
+            // Determine RAG status solely from the correct nested property
+            const isRagEnabled = !!config?.database?.ragEnabled;
             
-            console.log('[3hjt8] RAG enabled status:', isRagEnabled, 'Raw values:', {
-              'database.ragEnabled': config?.database?.ragEnabled,
-              'root.ragEnabled': config?.ragEnabled
-            });
+            console.log('[App.tsx] RAG enabled status determined:', isRagEnabled, 'Value from config.database.ragEnabled:', config?.database?.ragEnabled);
             
             setRagEnabled(isRagEnabled);
        } catch (e) { 
-          console.error("Failed to get RAG status", e); 
-          setRagEnabled(false);
+          console.error("Failed to get RAG status from API, defaulting to false.", e); 
+          setRagEnabled(false); // Ensure it defaults to false on API error
        } finally {
           setRagStatusFetched(true);
        }

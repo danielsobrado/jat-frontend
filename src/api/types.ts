@@ -653,6 +653,8 @@ export interface ClassificationRequest {
 export interface ManualClassificationRequest {
   description: string;
   systemCode: string;
+  selectedSystem: string;
+  additionalContext?: string;
   levels: { [levelCode: string]: string };
 }
 

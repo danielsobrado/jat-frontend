@@ -6,6 +6,7 @@ import {
   ClassificationResult,
   ClassificationSystem,
   ClassificationLevel,
+  ManualClassificationRequest,
 } from '../api/types';
 import { ManualClassificationModal } from './ManualClassificationModal';
 import { useAuth } from '../context/AuthContext'; // Import useAuth hook
@@ -131,15 +132,36 @@ export const ClassificationForm: React.FC<ClassificationFormProps> = ({
     setLevelResponses({});
   };
 
-  const handleManualClassification = (manualResult: ClassificationResult) => {
-    setResult(manualResult);
-    
-    // Use level-specific responses from the result if available
-    if (manualResult.levelResponses && Object.keys(manualResult.levelResponses).length > 0) {
-      setLevelResponses(manualResult.levelResponses);
+  const handleManualClassification = async (manualResult: ClassificationResult) => {
+    try {
+      // Prepare the request payload according to ManualClassificationRequest interface
+      const requestPayload: ManualClassificationRequest = {
+        description: description,
+        systemCode: selectedSystem,
+        selectedSystem: selectedSystem, // As per interface, using selectedSystem state
+        additionalContext: additionalContext,
+        levels: Object.fromEntries(
+          Object.entries(manualResult.levels).map(([levelCode, categoryLevel]) => [
+            levelCode,
+            categoryLevel.code, // Extract the code string
+          ])
+        ),
+      };
+
+      const updatedResult = await apiClient.classifyManually(requestPayload);
+      setResult(updatedResult);
+
+      // Use level-specific responses from the result if available
+      if (updatedResult.levelResponses && Object.keys(updatedResult.levelResponses).length > 0) {
+        setLevelResponses(updatedResult.levelResponses);
+      }
+
+      onResult?.(updatedResult);
+    } catch (error) {
+      console.error("Failed to save manual classification:", error);
+      setError("Failed to save manual classification. Please try again.");
+      onError?.(error instanceof Error ? error : new Error("Failed to save manual classification."));
     }
-    
-    onResult?.(manualResult);
   };
 
   const getLevelClasses = (index: number): {bg: string, text: string} => {
