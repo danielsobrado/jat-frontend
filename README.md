@@ -1,197 +1,93 @@
-# Frontend Documentation
+# Frontend Components (`src/components`)
 
-## Project Structure
+This directory contains the reusable React components that make up the user interface of the CDP Classifier application. Components are organized by feature area where applicable.
 
-The frontend is organized into three main packages:
+## Core Layout & Navigation
 
-```
-packages/
-├── shared-ui/         # Shared React components
-│   ├── src/
-│   │   ├── components/ # Reusable UI components
-│   │   ├── api/        # API interfaces and types
-│   │   └── types/      # TypeScript type definitions
-├── web/              # Web application
-└── desktop/          # Desktop frontend (in cmd/desktop/frontend)
-```
+*   **`Layout/PageLayout.tsx`**: The main application shell. It renders the fixed header, the collapsible `LeftSidebar`, and the main content area (`<Outlet />`). It manages the sidebar's collapsed/expanded state.
+*   **`Layout/Breadcrumb.tsx`**: (Currently seems unused by `PageLayout`) An Ant Design Breadcrumb component intended to show the user's current location within the app based on the route path.
+*   **`Sidebar/LeftSidebar.component.tsx`**: The main navigation sidebar. It dynamically renders menu items based on application configuration (e.g., RAG enabled) and user permissions. Handles collapsing/expanding on hover and logout confirmation.
+*   **`Sidebar/LeftSidebarItem.component.tsx`**: Renders a single item within the `LeftSidebar`, handling navigation links or actions like logout.
 
-## Package Architecture
+## Authentication
 
-### Shared Components (`packages/shared-ui/`)
-- Contains common React components used by both web and desktop frontends
-- Implements platform-agnostic UI components (forms, layouts, etc.)
-- Defines API interface abstractions and shared TypeScript types
-- Uses Tailwind CSS for consistent styling
+*   **`LoginForm.tsx`**: A form component for users to enter their username and password. It interacts with the `AuthService` via the `apiClient` prop to perform login and handles success/error states.
 
-### Web Frontend (`packages/web/`)
-- Implements `WebApiClient` for HTTP communication with backend server
-- Uses shared components from @unspsc/shared-ui
-- Runs as a standalone application with separate backend server
+## Classification (Single Item)
 
-### Desktop Frontend (`cmd/desktop/frontend/`)
-- Implements `DesktopApiClient` using Wails bindings
-- Uses shared components from @unspsc/shared-ui
-- Integrated directly with Go backend in Wails application
+*   **`ClassificationForm.tsx`**: Provides the primary interface for classifying a single item. Includes fields for description, context, system selection, handles API calls for classification, displays results, and allows triggering manual classification edits.
+*   **`ManualClassificationModal.tsx`**: A modal component used for manually setting or overriding classification codes for different levels of a selected system. It features searchable dropdowns for selecting categories.
+*   **`ClassificationDetailsModal.tsx`**: A modal component used within the `HistoryTab` to display the full details of a past classification, including levels, RAG context (if used), and LLM reasoning (if available), organized into tabs.
+*   **`RerunStatusModal.tsx`**: A simple modal indicating that a classification rerun is in progress.
 
-## Key Components
+## Batch Classification (`BatchTab`)
 
-### ClassificationForm
-Primary interface for product classification with:
-- Product description input with validation
-- Classification system selection
-- Real-time classification results display
-- Classification levels support:
-  - Automatic classification with AI
-  - Manual classification with parent-based category selection
-  - Reclassify button for switching between modes
-- Hierarchical category selection:
-  - Sequential loading based on parent selection
-  - Validation of selected categories
-  - Dynamic updating of available options
-- Language features:
-  - Automatic language detection
-  - Translation for non-English input
-- Confidence score display
+*   **`BatchTab/BatchTab.tsx`**: The main component orchestrating the batch classification process. It integrates file upload, column selection, preview, progress display, and result summary.
+*   **`BatchTab/FileUpload.tsx`**: Handles drag-and-drop or browse file uploads (CSV/Excel). Includes logic to detect multiple Excel sheets and prompt the user for selection.
+*   **`BatchTab/ColumnSelector.tsx`**: Allows users to map columns from their uploaded file to specific roles (Source Description, Context, Key Columns) and select the classification system.
+*   **`BatchTab/PreviewTable.tsx`**: Displays a preview of the uploaded data, highlighting the selected columns and showing processing status/results for previewed rows.
+*   **`BatchTab/BatchProgress.tsx`**: Shows the progress of an ongoing batch classification job (items processed / total).
+*   **`BatchTab/BatchSummary.tsx`**: Displays a summary of a completed batch job (success/partial/fail counts) and provides a button to download the results as a CSV.
 
-### Settings
-Configuration management interface:
-- LLM API configuration:
-  - API endpoint URL
-  - API key management
-- Real-time validation
-- Persistent storage in config.yaml
-- Secure handling of sensitive data
+## Batch Jobs (`BatchJobsTab`)
 
-### MainTabs
-Navigation component with three main sections:
-- Testing: Product classification interface
-- Settings: Application configuration
-- History: Past classifications (coming soon)
+*   **`BatchJobsTab/BatchJobsTab.tsx`**: The main component for viewing and managing past and ongoing batch classification jobs. It uses hooks for data fetching, filtering, and polling.
+*   **`BatchJobsTab/components/BatchJobsFilters.tsx`**: Provides UI elements (dropdowns, date pickers) for filtering the list of batch jobs.
+*   **`BatchJobsTab/components/BatchJobsTable.tsx`**: Displays the list of batch jobs with details like status, progress, and actions (View, Download).
+*   **`BatchJobsTab/components/BatchJobsPagination.tsx`**: Handles pagination for the batch jobs list (currently seems unused/replaced by Antd pagination in `BatchJobsTab`).
+*   **`BatchJobsTab/components/JobStatusDisplay.tsx`**: A helper component rendering status badges, progress bars, and summary counts within the `BatchJobsTable`.
+*   **`BatchJobsTab/components/BatchSummary.tsx`**: (Potentially duplicated/misplaced - similar functionality exists in `src/components/BatchTab`) Displays a summary of batch results, likely intended for within the details modal or job row.
+*   **`BatchJobsTab/BatchJobDetailsModal.tsx`**: A modal showing detailed results for each item within a specific batch job.
 
-## API Interfaces
+## History (`HistoryTab`)
 
-```typescript
-// Core API Client Interface
-export interface ApiClient {
-  // Core operations
-  initialize(): Promise<void>;
-  classify(description: string, systemCode?: string, additionalContext?: string): Promise<ClassificationResult>;
-  
-  // Manual classification
-  classifyManually(request: ManualClassificationRequest): Promise<ClassificationResult>;
-  
-  // System operations
-  getClassificationSystems(): Promise<ClassificationSystem[]>;
-  getClassificationSystem(code: string): Promise<{ system: ClassificationSystem; levels: ClassificationLevel[] }>;
-  getSystemCategories(req: SystemCategoriesRequest): Promise<Category[]>;
-  
-  // Configuration
-  getConfig(): Promise<LlmConfig>;
-  updateConfig(config: LlmConfig): Promise<void>;
-}
+*   **`HistoryTab.tsx`**: Displays a paginated and filterable table of past classification records (both single and batch items). Allows viewing details, manual reclassification, rerunning, and deleting history entries based on user permissions.
 
-// Manual Classification Types
-export interface ManualClassificationRequest {
-  description: string;
-  systemCode: string;
-  levels: { [levelCode: string]: string }; // levelCode -> category code mapping
-}
+## RAG Information Management (`RagInfoTab`)
 
-export interface SystemCategoriesRequest {
-  systemCode: string;
-  level?: string;
-  parentCode?: string; // For loading child categories
-}
+*   **`RagInfoTab/RagInfoTab.tsx`**: The main component for managing custom information used for Retrieval-Augmented Generation (RAG). Orchestrates fetching, creating, updating, deleting, filtering, and pagination of RAG items. Includes CSV import/export functionality.
+*   **`RagInfoTab/components/RagInfoFilters.tsx`**: Provides a search input for filtering RAG items.
+*   **`RagInfoTab/components/RagInfoTable.tsx`**: Displays the list of RAG items with their keys, descriptions, and actions.
+*   **`RagInfoTab/components/RagInfoPagination.tsx`**: Handles pagination for the RAG items list.
+*   **`RagInfoTab/components/RagInfoFormModal.tsx`**: A modal form used for creating new RAG items or editing existing ones.
 
-// Classification Result Type
-export interface ClassificationResult {
-  systemCode: string;
-  levels: { [levelCode: string]: CategoryLevel };
-  timestamp: string;
-}
+## Settings
 
-// Category Types
-export interface Category {
-  id: number;
-  systemId: number;
-  code: string;
-  name: string;
-  description?: string;
-  levelCode: string;
-  parentCode?: string;
-  createdAt: string;
-}
+*   **`Settings/SettingsTab.tsx`**: The main interactive component for the Settings page. It displays configuration values fetched from the API, organized into tabs. It allows users with appropriate permissions to edit configuration values using various input types (text, password, number, switch, select). Handles saving changes via the `apiClient`.
+*   **`ConfigValue.tsx`**: A reusable component used by `SettingsTab` (and potentially `Settings.tsx`) to display individual configuration values. It handles different data types, masks sensitive values (like API keys, passwords), and provides specific styling for boolean values.
+*   **`Settings.tsx`**: (Seems to be an older/view-only version) Displays system configuration in a read-only, collapsible format. Uses `ConfigValue` for rendering. *Note: `SettingsTab.tsx` appears to be the primary component used in `SettingsPage.tsx`.*
 
-export interface CategoryLevel {
-  code: string;
-  name: string;
-  description?: string;
-}
+## User Management (`UserManagementTab`)
 
-// Configuration Types
-export interface LlmConfig {
-  llmEndpoint: string;
-  llmApiKey: string;
-}
-```
+*   **`UserManagementTab/UserManagementTab.tsx`**: Orchestrates the User Management UI, using the `useUsers` hook for data and logic. Integrates the table and modal form.
+*   **`UserManagementTab/components/UserTable.tsx`**: Displays the list of users with their roles and provides actions (Edit, Delete) based on permissions. Includes sorting and pagination.
+*   **`UserManagementTab/components/UserFormModal.tsx`**: A modal form for creating new users or editing existing ones, including password handling and role assignment via a multi-select dropdown.
+*   **`UserManagementComponent.tsx`**: (Seems superseded by `UserManagementTab`) Older component structure containing table and modal logic directly.
 
-## Styling Implementation
+## Role Management (`RoleManagementTab`)
 
-The application uses Tailwind CSS for styling with:
-- Responsive design using Tailwind's grid and spacing utilities
-- Consistent component styling through shared classes
-- Dark mode support via Tailwind's dark mode classes
-- Custom component styles defined in component files
-- Mobile-first approach
+*   **`RoleManagementTab/RoleManagementTab.tsx`**: Orchestrates the Role Management UI, using the `useRoles` hook. Integrates the table and modal form.
+*   **`RoleManagementTab/components/RoleTable.tsx`**: Displays the list of roles, their descriptions, assigned permissions, and actions (Edit, Delete - excluding core roles).
+*   **`RoleManagementTab/components/RoleFormModal.tsx`**: A modal form for creating new roles or editing existing ones (name, description, permissions). Handles permission selection via checkboxes grouped by category. Restricts modification of core roles.
+*   **`RoleManagementTab/components/PermissionAssignmentModal.tsx`**: (Seems unused/superseded by `RoleFormModal`) A modal specifically for assigning permissions to a role, likely replaced by the integrated permission selection in `RoleFormModal`.
+*   **`RoleManagementComponent.tsx`**: (Seems superseded by `RoleManagementTab`) Older component structure containing table and modal logic directly.
 
-## Development Workflow
+## Associated Hooks
 
-1. Install Dependencies:
-```bash
-pnpm install
-```
+Helper hooks encapsulate data fetching, state management, and logic for specific features:
 
-2. Build Shared Components:
-```bash
-pnpm run build --filter @unspsc/shared-ui
-```
+*   **`UserManagement/hooks/useUsers.ts`**: Manages fetching, creating, updating, deleting users, and fetching available roles.
+*   **`RoleManagement/hooks/useRoles.ts`**: Manages fetching, creating, updating, deleting roles, and fetching available permissions.
+*   **`RagInfoTab/hooks/useRagInfo.ts`**: Manages fetching, creating, updating, deleting, filtering, and paginating RAG info items. Includes logic for CSV export fetching.
+*   **`BatchJobsTab/hooks/useBatchJobs.ts`**: Manages fetching, filtering, paginating, and polling batch job statuses.
 
-3. Run Development Servers:
+## Testing
 
-For web:
-```bash
-pnpm run dev --filter @unspsc/web
-```
+*   Tests are implemented using React Testing Library (`@testing-library/react`) and Jest.
+*   Example: `__tests__/ConfigValue.test.tsx` covers various scenarios for the `ConfigValue` component, including different data types, masking, and styling.
 
-For desktop:
-```bash
-pnpm run dev --filter @unspsc/desktop
-```
+## Development Notes
 
-4. Building for Production:
-```bash
-# Build all packages
-pnpm run build
-
-# Build specific package
-pnpm run build --filter @unspsc/web
-```
-
-## Classification Process
-
-### Automatic Classification
-1. User enters product description
-2. System uses LLM to classify the product
-3. Results are displayed with category codes and names
-4. User can view classification at each level
-
-### Manual Classification
-1. User enters product description
-2. Initial classification is performed (optional)
-3. User clicks "Reclassify Manually" button
-4. Categories are loaded sequentially:
-   - First level categories are loaded initially
-   - Selecting a category loads child categories for next level
-   - Process continues until all levels are selected
-5. User submits manual classification
-6. Results are saved and displayed
+*   Components generally follow a pattern of having a main "Tab" or "Page" component that uses hooks for logic and integrates sub-components for display (Table, Filters, Modals).
+*   Permissions (fetched via `useAuth`) are checked within components to enable/disable actions or show/hide UI elements.
+*   Styling leverages Tailwind CSS utility classes (defined in `src/index.css`) and component-specific CSS files (e.g., `left-sidebar.css`). Ant Design (`antd`) components are used for tables, modals, forms, etc., providing a consistent look and feel.
