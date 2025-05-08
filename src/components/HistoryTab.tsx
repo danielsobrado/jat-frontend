@@ -49,6 +49,21 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
     return new Date().toISOString().split('T')[0];
   });
 
+  // List of informational "errors" that are part of normal classification outcomes
+  const informationalErrorMessages = [
+    "Classification failed to determine required levels",
+    "Classification failed to determine required levels.",
+    "No matching category found at this level", // Assuming this might also come as a top-level error
+    "Failed to classify at this level", // Assuming this might also come as a top-level error
+    "Classification is partial; some levels may be missing or invalid.", // Added this message
+  ];
+
+  // Helper to check if an error message is informational
+  const isInformationalError = (errorMessage?: string): boolean => {
+    if (!errorMessage) return false;
+    return informationalErrorMessages.some(msg => errorMessage.includes(msg));
+  };
+
   useEffect(() => {
     const loadSystems = async () => {
       try {
@@ -313,9 +328,13 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
       description: result.description
     });
 
-    // Show error if classification failed
-    if (result.error) {
+    // Show error if classification failed, unless it's an informational error
+    if (result.error && !isInformationalError(result.error)) {
       setError(`Classification failed: ${result.error}`);
+    } else if (result.error && isInformationalError(result.error)) {
+      // Clear any previous critical errors if this is just informational
+      setError(undefined);
+      console.info(`Informational message from manual classification: ${result.error}`);
     }
 
     // Always reload history after any classification attempt
@@ -504,11 +523,12 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                 <select
                   id="sourceType"
                   className="w-full px-4 py-2.5 bg-white border border-secondary-200 rounded-card text-secondary-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  value={selectedSource}
-                  onChange={(e) => setSelectedSource(e.target.value as '' | 'user' | 'batch')}
+                  value={selectedSource || ''} // Ensure value is empty string if undefined for controlled component
+                  onChange={(e) => setSelectedSource(e.target.value as '' | 'user' | 'batch' | 'api')}
                 >
                   <option value="">All Sources</option>
-                  <option value="user">Manual</option>
+                  <option value="manual">Manual</option> {/* Changed 'user' to 'manual' for consistency if backend saves "manual" */}
+                  <option value="api">API</option> {/* Added API option */}
                   <option value="batch">Batch</option>
                 </select>
               </div>
@@ -632,8 +652,10 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                         <span className="truncate block">{item.description}</span>
                       )}
                       {item.error && (
-                        <div className="mt-1 text-xs text-red-600">
-                          Error: {item.error}
+                        <div className={`mt-1 text-xs ${
+                          isInformationalError(item.error) ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {isInformationalError(item.error) ? `Note: ${item.error}` : `Error: ${item.error}`}
                         </div>
                       )}
                     </td>
@@ -655,15 +677,20 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                               'segment': 1,
                               'family': 2,
                               'class': 3,
-                              'commodity': 4
+                              'commodity': 4,
+                              // Default for any other level codes if they appear
+                              'default': 99 
                             };
-                            // If in the same system, sort by level order
-                            if ((a.startsWith('SUBCAT') && b.startsWith('SUBCAT')) ||
-                                (!a.startsWith('SUBCAT') && !b.startsWith('SUBCAT'))) {
-                              return (levelOrder[a] ?? 99) - (levelOrder[b] ?? 99);
-                            }
-                            // Otherwise, maintain original sort order
-                            return a.localeCompare(b);
+                            // Helper to get order, defaulting for unknown levels
+                            const getOrder = (levelCode: string) => {
+                                if (levelCode.startsWith('SUBCAT')) return levelOrder[levelCode] ?? levelOrder['default'];
+                                return levelOrder[levelCode.toLowerCase()] ?? levelOrder['default'];
+                            };
+                            
+                            const orderA = getOrder(a);
+                            const orderB = getOrder(b);
+
+                            return orderA - orderB;
                           })
                           .map(([levelCode, category]) => (
                           <div key={levelCode}>
