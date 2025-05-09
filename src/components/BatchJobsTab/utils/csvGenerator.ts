@@ -1,6 +1,6 @@
 // src/components/BatchJobsTab/utils/csvGenerator.ts
 import { saveAs } from 'file-saver';
-import { BatchClassificationResult } from '../../../api/types'; // Adjusted import path
+import { BatchClassificationResult } from '../../../api/types'; 
 
 // Helper function to escape CSV values
 const escapeCsvValue = (value: any): string => {
@@ -13,7 +13,7 @@ const escapeCsvValue = (value: any): string => {
                        stringValue.includes('"') || 
                        stringValue.includes('\n') || 
                        stringValue.includes('\r') ||
-                       stringValue.includes(';') ||  // Additional separators sometimes used
+                       stringValue.includes(';') ||  
                        stringValue.includes('\t');
   
   if (!needsQuoting) return stringValue;

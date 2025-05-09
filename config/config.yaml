@@ -12,7 +12,7 @@ service:
   excelPattern: "[Uu][Nn][Ss][Pp][Ss][Cc]*.xlsx"
   llmEndpoint: "https://openrouter.ai/api/v1/chat/completions"  
   llmApiKey: "${OPENROUTER_API_KEY}"
-  llmModel: "meta-llama/llama-4-maverick"
+  llmModel: "qwen/qwen3-235b-a22b"
   llmMaxTokens: 4096
   llmTemperature: 0.2
   useTypePrompt: false # Use type prompt for good or service
