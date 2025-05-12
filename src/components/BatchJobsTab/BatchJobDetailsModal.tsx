@@ -162,8 +162,7 @@ const BatchJobDetailsModalComponent = ({ job, open, onClose }: BatchJobDetailsMo
 
   // --- Render Helper Functions ---
   const renderSummary = useCallback(() => {
-    const resultsArray = job.results || [];    // Filter to show only processed items, rely on server count if available
-    const processedCount = job.processedItems !== undefined ? job.processedItems : resultsArray.filter(isProcessedItem).length;
+    const resultsArray = job.results || [];    // Filter to show only processed items
     const processedResults = resultsArray.filter(isProcessedItem);
 
     // Use refined utils for counting on processed items only
@@ -224,9 +223,8 @@ const BatchJobDetailsModalComponent = ({ job, open, onClose }: BatchJobDetailsMo
             <div className="text-xs text-secondary-500 mb-1">Duration</div>
             <div className="text-sm text-secondary-700">{timingInfo.duration}</div>
           </div>          <div className="p-3 bg-secondary-50 rounded-md">
-            <div className="text-xs text-secondary-500 mb-1">Batch Size</div>
-            <div className="text-sm text-secondary-700">
-              {(job.results || []).filter(isProcessedItem).length} / {(job.results || []).length} items processed
+            <div className="text-xs text-secondary-500 mb-1">Batch Size</div>            <div className="text-sm text-secondary-700">
+              {job.processedItems !== undefined ? job.processedItems : (job.results || []).filter(isProcessedItem).length} / {(job.results || []).length} items processed
             </div>
           </div>
         </div>
