@@ -1,3 +1,4 @@
+// src/api/types.ts
 // API Client Interface
 export interface ApiClient {
   // Authentication methods
@@ -214,7 +215,7 @@ export interface ApiClient {
    * Get a list of RAG information items
    * @param params - Optional parameters for pagination and searching
    */
-  getRagInfoList(params?: RagInfoRequestParams): Promise<RagInfoPage>;
+  // getRagInfoList(params?: RagInfoRequestParams): Promise<RagInfoPage>; // Already declared above
 
   /**
    * Get a specific RAG information item
@@ -226,26 +227,32 @@ export interface ApiClient {
    * Create a new RAG information item
    * @param data - RAG information creation data
    */
-  createRagInfo(data: CreateRagInfoRequest): Promise<RagInfoItem>;
+  // createRagInfo(data: CreateRagInfoRequest): Promise<RagInfoItem>; // Already declared above
 
   /**
    * Update an existing RAG information item
    * @param id - RAG information item ID
    * @param data - RAG information update data
    */
-  updateRagInfo(id: string, data: UpdateRagInfoRequest): Promise<RagInfoItem>;
+  // updateRagInfo(id: string, data: UpdateRagInfoRequest): Promise<RagInfoItem>; // Already declared above
 
   /**
    * Delete a RAG information item
    * @param id - RAG information item ID
    */
-  deleteRagInfo(id: string): Promise<void>;
+  // deleteRagInfo(id: string): Promise<void>; // Already declared above
 
   /** Get current configuration */
-  getConfig(): Promise<LlmConfig>;
+  // getConfig(): Promise<LlmConfig>; // Already declared above
 
   /** Update configuration */
-  updateConfig(configUpdate: UpdateConfigRequest): Promise<void>;
+  // updateConfig(configUpdate: UpdateConfigRequest): Promise<void>; // Already declared above
+
+   /**
+   * Query RAG for context (used by internal services, might not be exposed to UI directly)
+   * @param question - The query string
+   */
+   queryRag(question: string): Promise<any>; // Define 'any' for now, can be more specific if response structure is known
 }
 
 // --- RAG Information Types ---
@@ -634,8 +641,8 @@ export interface ClassificationResult {
   ragContextUsed: boolean;
   ragContext?: string;
   levelResponses?: { [key: string]: string }; // Level-specific LLM responses
-  prompt?: string; // The full prompt used for classification
-  allPromptsDetail?: { [key: string]: string }; // Detailed prompts for each level
+  firstLevelPrompt?: string; // Renamed from prompt to match backend changes
+  allPromptsDetail?: string; // JSON string of all prompts
 }
 
 export interface ClassificationError {
@@ -646,16 +653,20 @@ export interface ClassificationError {
 
 // Request Types
 export interface ClassificationRequest {
+  ItemID?: string; // Changed from item_id to ItemID
+  Name?: string;   // Changed from name to Name
   description: string;
-  systemCode?: string;
-  additionalContext?: string;
-  key?: string; // Added key field for batch item identification
+  systemCode?: string; // Changed from system_code to systemCode
+  additionalContext?: string; // Changed from additional_context to additionalContext
+  levels?: { [key: string]: string }; // For manual classification
+  IsManual?: boolean; // Changed from is_manual to IsManual
+  key?: string; // Unique key identifier for the item
 }
 
 export interface ManualClassificationRequest {
   description: string;
   systemCode: string;
-  selectedSystem: string;
+  selectedSystem?: string; // Optional based on your backend expectation, usually same as systemCode
   additionalContext?: string;
   levels: { [levelCode: string]: string };
 }
@@ -673,43 +684,42 @@ export interface BatchClassificationRequest {
     additionalContext?: string;
     key?: string; // Include key field to identify batch items
   }>;
-  systemCode?: string;
-  key_column_names?: string[]; // Added field for key column names
+  systemCode?: string; // Changed from system_code to systemCode
+  key_column_names?: string[]; 
 }
 
 // Response Types
 export interface BatchClassificationResult {
-  results: BatchItemResult[] | undefined; // Keep optional for safety
+  results?: BatchItemResult[]; 
   id: string;
   status: string;
   timestamp: string;
-  Results?: BatchItemResult[];
+  Results?: BatchItemResult[]; // Kept for backward compatibility if backend sends this casing
   error?: string;
   system_code?: string;  
   updated_at?: string;
-  totalItems?: number; // Total number of items in the batch job
-  processedItems?: number; // Number of processed items in the batch job
-  keyColumnNames?: string[]; // Array of key column names used for batch processing
-  systemCode?: string; // Normalized version of system_code
+  totalItems?: number; 
+  processedItems?: number; 
+  keyColumnNames?: string[]; 
+  systemCode?: string; 
 }
 
 export interface BatchItemResult {
-  // id?: string; // ID might not be present on individual items in the response array
   description: string;
   additional_context?: string;
   result?: ClassificationResult;
-  error?: string | ClassificationError; // Allow error to be object or string
-  key?: string; // Added key field for identifying batch items
-  prompt?: string; // The full prompt used for classification
-  allPromptsDetail?: { [key: string]: string }; // Detailed prompts for each level
+  error?: string | ClassificationError; 
+  key?: string; 
+  prompt?: string; // This is likely the first-level prompt used for this item
+  allPromptsDetail?: string; // This is the JSON string of all prompts for this item
 }
 
 export interface BatchJobParams {
   cursor?: string;
   limit?: number;
   status?: string;
-  startDate?: string; // ISO Date string (e.g., "YYYY-MM-DDTHH:mm:ssZ")
-  endDate?: string;   // ISO Date string
+  startDate?: string; 
+  endDate?: string;   
 }
 
 export interface BatchJobsPage {
@@ -720,22 +730,22 @@ export interface BatchJobsPage {
 
 // History Types
 export interface ClassificationHistory {
-  id: number; // Changed to number based on backend schema
+  id: number; 
   description: string;
   systemCode: string;
   additionalContext?: string;
   levels: { [key: string]: CategoryLevel };
-  createdAt: string; // ISO Date string
+  createdAt: string; 
   status: 'success' | 'failed' | 'partial';
   createdBy: string;
   sourceType: 'user' | 'batch' | 'manual' | 'api';
   ragContextUsed: boolean;
   ragContext?: string;
   error?: string;
-  levelResponses?: { [key: string]: string }; // Level-specific LLM responses
-  prompt?: string; // The full prompt used for classification
-  key?: string; // Key field for batch identification
-  allPromptsDetail?: { [key: string]: string }; // Detailed prompts for each level
+  levelResponses?: { [key: string]: string }; 
+  firstLevelPrompt?: string; // Renamed from prompt
+  key?: string; 
+  allPromptsDetail?: string; // JSON string of all prompts
 }
 
 export interface ClassificationHistoryPage {

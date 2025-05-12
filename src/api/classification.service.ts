@@ -33,12 +33,13 @@ export class ClassificationService {
       let status: 'success' | 'partial' | 'failed' = 'success';
       if (result.error) {
         status = Object.keys(result.levels || {}).length > 0 ? 'partial' : 'failed';
-      }
-      return {
+      }      return {
         ...result,
         description,
         status: result.status || status,
-        timestamp: this.core.formatDate(result.timestamp)
+        timestamp: this.core.formatDate(result.timestamp),
+        firstLevelPrompt: result.first_level_prompt || result.firstLevelPrompt,
+        allPromptsDetail: result.all_prompts_detail || result.allPromptsDetail
       };
     } catch (error) {
       console.error(`[${requestId}] Classification error:`, error);
@@ -61,20 +62,20 @@ export class ClassificationService {
         if (!response.ok) {
             const error = await response.json().catch(() => ({ error: response.statusText }));
             throw new Error(error.error || 'Manual classification failed');
-        }
-        const result = await response.json();
+        }        const result = await response.json();
         return {
             ...result,
             description: request.description,
             status: result.status || 'success',
-            timestamp: this.core.formatDate(result.timestamp)
+            timestamp: this.core.formatDate(result.timestamp),
+            firstLevelPrompt: result.first_level_prompt || result.firstLevelPrompt,
+            allPromptsDetail: result.all_prompts_detail || result.allPromptsDetail
         };
      } catch (error) {
         console.error(`[${requestId}] Manual classification error:`, error);
         throw error;
      }
   }
-
   async rerunClassification(id: string): Promise<ClassificationResult> {
     const requestId = Math.random().toString(36).substring(7);
     try {
@@ -85,7 +86,15 @@ export class ClassificationService {
         if (!response.ok) {
             throw new Error(`Rerun classification failed: ${response.statusText}`);
         }
-        return await response.json();
+        const result = await response.json();
+        
+        // Map backend field names to frontend field names
+        return {
+            ...result,
+            firstLevelPrompt: result.first_level_prompt || result.firstLevelPrompt,
+            allPromptsDetail: result.all_prompts_detail || result.allPromptsDetail,
+            timestamp: this.core.formatDate(result.timestamp)
+        };
     } catch (error) {
         console.error(`[${requestId}] Error rerunning classification:`, error);
         throw error;
@@ -140,12 +149,12 @@ export class ClassificationService {
         createdAt: this.core.formatDate(item.created_at ?? item.createdAt),
         status: item.status,
         createdBy: item.created_by ?? item.createdBy,
-        sourceType: item.source_type ?? item.sourceType,
-        ragContextUsed: item.rag_context_used ?? item.ragContextUsed,
+        sourceType: item.source_type ?? item.sourceType,        ragContextUsed: item.rag_context_used ?? item.ragContextUsed,
         ragContext: item.rag_context ?? item.ragContext,
         levelResponses: item.level_responses ?? item.levelResponses,
         error: item.error,
-        prompt: item.prompt,
+        firstLevelPrompt: item.first_level_prompt ?? item.firstLevelPrompt,
+        allPromptsDetail: item.all_prompts_detail ?? item.allPromptsDetail,
       }));
 
       return {

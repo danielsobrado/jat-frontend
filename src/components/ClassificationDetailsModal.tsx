@@ -1,9 +1,9 @@
 // src/components/ClassificationDetailsModal.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { ClassificationHistory, CategoryLevel } from '../api/types';
-import { formatDate } from '../utils/dateFormat'; // Ensure this path is correct
+import { formatDate } from '../utils/dateFormat'; 
 import ReactMarkdown from 'react-markdown';
-import { InformationCircleIcon } from '@heroicons/react/24/outline'; // For RAG context icon
+// import { InformationCircleIcon } from '@heroicons/react/24/outline'; // Removed unused import
 
 interface ClassificationDetailsModalProps {
   isOpen: boolean;
@@ -20,11 +20,14 @@ const informationalErrorMessages = [
   "Classification is partial; some levels may be missing or invalid.",
   "Classification is partial.", // Added from strategy_standard
   "Classification failed.", // Added from strategy_standard
+  "Level not classified.", // Common pattern for level-specific messages
+  "No match found for level", // Common pattern for no-match messages
 ];
 
 const isInformationalError = (errorMessage?: string): boolean => {
   if (!errorMessage) return false;
-  return informationalErrorMessages.some(msg => errorMessage.toLowerCase().includes(msg.toLowerCase()));
+  const lowerMessage = errorMessage.toLowerCase();
+  return informationalErrorMessages.some(msg => lowerMessage.includes(msg.toLowerCase()));
 };
 
 
@@ -36,62 +39,86 @@ export const ClassificationDetailsModal: React.FC<ClassificationDetailsModalProp
   const [activeTab, setActiveTab] = useState<'details' | 'rag' | 'llm' | 'prompt'>('details');
   const [activeLlmTab, setActiveLlmTab] = useState<string | null>(null);
   const [activePromptTab, setActivePromptTab] = useState<string | null>(null);
+  const levelOrder: Record<string, number> = useMemo(() => ({ 
+    'segment': 1, 'family': 2, 'class': 3, 'commodity': 4,
+    'subcat1': 1, 'subcat2': 2, 'default': 99, 'first_level': 0, 
+    'first_level_prompt_only': 0, 'error_prompt': 0
+  }), []);
 
   const parsedPrompts = useMemo(() => {
-    if (item?.allPromptsDetail) {
+    if (item?.allPromptsDetail) { // allPromptsDetail is now string | undefined
       try {
-        return JSON.parse(item.allPromptsDetail) as Record<string, string>;
+        const parsed = JSON.parse(item.allPromptsDetail);
+        if (typeof parsed === 'object' && parsed !== null) {
+          return parsed as Record<string, string>;
+        }
+        console.warn("Parsed allPromptsDetail is not an object:", parsed);
+        // Fallback if JSON is valid but not an object
       } catch (e) {
         console.error("Failed to parse allPromptsDetail JSON:", e, "\nContent:", item.allPromptsDetail);
-        // If parsing fails, but firstLevelPrompt exists, create a map with it
-        if (item.firstLevelPrompt) {
-            // Try to find the first level code
-            const firstLevelKey = item.levels && Object.keys(item.levels).length > 0 ?
-                                  Object.keys(item.levels).sort((a,b) => (levelOrder[a.toLowerCase()] ?? 99) - (levelOrder[b.toLowerCase()] ?? 99))[0]
-                                  : "first_level";
-            return { [firstLevelKey]: item.firstLevelPrompt };
-        }
-        return null;
+        // Fall through to firstLevelPrompt if parsing fails
       }
-    } else if (item?.firstLevelPrompt) {
-        // If allPromptsDetail is missing but firstLevelPrompt exists
-        const firstLevelKey = item.levels && Object.keys(item.levels).length > 0 ?
-                              Object.keys(item.levels).sort((a,b) => (levelOrder[a.toLowerCase()] ?? 99) - (levelOrder[b.toLowerCase()] ?? 99))[0]
-                              : "first_level_prompt_only";
+    }
+    
+    // Fallback to firstLevelPrompt if allPromptsDetail is missing, unparsable, or not an object
+    if (item?.firstLevelPrompt) {
+        // Try to determine a sensible key for the first level prompt
+        let firstLevelKey = "first_level_prompt"; // Default key
+        if (item.levels && Object.keys(item.levels).length > 0) {
+            const sortedLevels = Object.keys(item.levels).sort((a,b) => (levelOrder[a.toLowerCase()] ?? 99) - (levelOrder[b.toLowerCase()] ?? 99));
+            if (sortedLevels.length > 0) {
+                firstLevelKey = sortedLevels[0];
+            }
+        } else if (item.allPromptsDetail && item.allPromptsDetail.includes("error_prompt")){ 
+            // Special case for error prompt
+            firstLevelKey = "error_prompt";
+        }
         return { [firstLevelKey]: item.firstLevelPrompt };
     }
     return null;
-  }, [item?.allPromptsDetail, item?.firstLevelPrompt, item?.levels]); // Updated dependencies
-
-  const levelOrder: Record<string, number> = useMemo(() => ({ // Memoize levelOrder
-    'segment': 1, 'family': 2, 'class': 3, 'commodity': 4,
-    'subcat1': 1, 'subcat2': 2, 'default': 99
-  }), []);
-
+  }, [item?.allPromptsDetail, item?.firstLevelPrompt, item?.levels, levelOrder]);
 
   const sortedLevelCodesForTabs = useMemo(() => {
     if (!item) return [];
     const levelCodes = new Set<string>();
-    if (item.levelResponses) Object.keys(item.levelResponses).forEach(lc => levelCodes.add(lc));
-    if (parsedPrompts) Object.keys(parsedPrompts).forEach(lc => levelCodes.add(lc));
+    
+    // From LLM Responses
+    if (item.levelResponses) {
+        Object.keys(item.levelResponses).forEach(lc => levelCodes.add(lc));
+    }
+    
+    // From Parsed Prompts
+    if (parsedPrompts) {
+        Object.keys(parsedPrompts).forEach(lc => levelCodes.add(lc));
+    }
+    
+    // From actual classification levels (if available and others are not)
+    if (levelCodes.size === 0 && item.levels) {
+        Object.keys(item.levels).forEach(lc => levelCodes.add(lc));
+    }
     
     return Array.from(levelCodes).sort((a, b) => 
       (levelOrder[a.toLowerCase()] ?? levelOrder['default']) - (levelOrder[b.toLowerCase()] ?? levelOrder['default']) || a.localeCompare(b)
     );
   }, [item, parsedPrompts, levelOrder]);
-
   useEffect(() => {
     if (isOpen) {
       setActiveTab('details');
       if (sortedLevelCodesForTabs.length > 0) {
-        setActiveLlmTab(sortedLevelCodesForTabs[0]);
-        setActivePromptTab(sortedLevelCodesForTabs[0]);
+        const firstTabKey = sortedLevelCodesForTabs[0];
+        setActiveLlmTab(firstTabKey);
+        setActivePromptTab(firstTabKey);
       } else {
+        // If no specific level tabs, but a firstLevelPrompt exists, set activePromptTab to a generic key
+        if (item?.firstLevelPrompt && parsedPrompts && Object.keys(parsedPrompts).length > 0) {
+            setActivePromptTab(Object.keys(parsedPrompts)[0]); // Use the key from parsedPrompts
+        } else {
+            setActivePromptTab(null);
+        }
         setActiveLlmTab(null);
-        setActivePromptTab(null);
       }
     }
-  }, [isOpen, sortedLevelCodesForTabs]);
+  }, [isOpen, sortedLevelCodesForTabs, item?.firstLevelPrompt, parsedPrompts]);
 
   if (!isOpen || !item) {
     return null;
@@ -102,7 +129,6 @@ export const ClassificationDetailsModal: React.FC<ClassificationDetailsModalProp
   };
 
   const getLevelPrompt = (levelCode: string): string => {
-    // Use parsedPrompts first, then fallback to item.firstLevelPrompt
     return parsedPrompts?.[levelCode] || item?.firstLevelPrompt || 'No prompt available for this level.';
   }
 
@@ -314,15 +340,17 @@ export const ClassificationDetailsModal: React.FC<ClassificationDetailsModalProp
                     ))}
                   </div>
                 </div>
-              ) : item.firstLevelPrompt ? ( 
-                 <div className="bg-secondary-50 rounded-lg p-4 overflow-x-auto max-h-96">
-                    <p className="text-sm font-medium text-secondary-700 mb-1">First Level Prompt:</p>
-                    <div className="text-sm text-secondary-900 font-mono whitespace-pre-wrap">
-                        {item.firstLevelPrompt}
-                    </div>
-                 </div>
+              ) : item?.firstLevelPrompt ? (
+                <div className="bg-secondary-50 rounded-lg p-4 overflow-x-auto max-h-96">
+                  <p className="text-sm font-medium text-secondary-700 mb-1">First Level Prompt:</p>
+                  <div className="text-sm text-secondary-900 font-mono whitespace-pre-wrap">
+                    {item.firstLevelPrompt}
+                  </div>
+                </div>
               ) : (
-                <div className="bg-secondary-50 rounded-lg p-6 text-center"><p className="text-sm text-secondary-500">No prompt details available.</p></div>
+                <div className="bg-secondary-50 rounded-lg p-6 text-center">
+                  <p className="text-sm text-secondary-500">No prompt details available.</p>
+                </div>
               )}
             </div>
           )}

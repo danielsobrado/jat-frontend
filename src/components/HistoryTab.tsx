@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+// src/components/HistoryTab.tsx
+import React, { useEffect, useState, useCallback } from 'react'; // Added useCallback
 import { Tooltip } from 'antd'; // Import Tooltip
 import { ApiClient, ClassificationHistory, ClassificationSourceType, ClassificationStatus, ClassificationSystem } from '../api/types';
 import { ManualClassificationModal } from './ManualClassificationModal';
@@ -18,9 +19,9 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
   const [history, setHistory] = useState<ClassificationHistory[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(10); // Keep pageSize constant
   const [totalPages, setTotalPages] = useState(1);
-  const [pageCursors, setPageCursors] = useState<string[]>([]);
+  const [pageCursors, setPageCursors] = useState<string[]>([]); // Store cursors for next pages
   const [loading, setLoading] = useState(false);
   const [systems, setSystems] = useState<ClassificationSystem[]>([]);
   const [selectedSystem, setSelectedSystem] = useState<string>();
@@ -49,19 +50,20 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
     return new Date().toISOString().split('T')[0];
   });
 
-  // List of informational "errors" that are part of normal classification outcomes
   const informationalErrorMessages = [
     "Classification failed to determine required levels",
     "Classification failed to determine required levels.",
-    "No matching category found at this level", // Assuming this might also come as a top-level error
-    "Failed to classify at this level", // Assuming this might also come as a top-level error
-    "Classification is partial; some levels may be missing or invalid.", // Added this message
+    "No matching category found at this level",
+    "Failed to classify at this level",
+    "Classification is partial; some levels may be missing or invalid.",
+    "Classification is partial.", // Matches backend's informational message for partial
+    "Classification failed.",   // Matches backend's informational message for failed
   ];
 
-  // Helper to check if an error message is informational
   const isInformationalError = (errorMessage?: string): boolean => {
     if (!errorMessage) return false;
-    return informationalErrorMessages.some(msg => errorMessage.includes(msg));
+    const lowerMessage = errorMessage.toLowerCase();
+    return informationalErrorMessages.some(msg => lowerMessage.includes(msg.toLowerCase()));
   };
 
   useEffect(() => {
@@ -78,160 +80,117 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
     loadSystems();
   }, [apiClient]);
 
-  // Add debugging for the actual API response
-  useEffect(() => {
-    const fetchHistoryData = async () => {
-      try {
-        // Make a direct API call to see the raw response
-        const response = await apiClient.getClassificationHistory({
-          limit: 1
-        });
-        
-        console.log('Raw History Response Sample:', {
-          firstItem: response.items[0] || {},
-          hasSystemCode: response.items[0]?.systemCode !== undefined,
-          hasSourceType: response.items[0]?.sourceType !== undefined,
-          hasPrompt: response.items[0]?.prompt !== undefined,  // Add debug for prompt field
-          systemCodeValue: response.items[0]?.systemCode,
-          sourceTypeValue: response.items[0]?.sourceType,
-          promptValue: response.items[0]?.prompt ? '[present]' : '[missing]',  // Check if prompt exists
-          responseKeys: response.items[0] ? Object.keys(response.items[0]) : []
-        });
-      } catch (err) {
-        console.error('Debug fetch failed:', err);
-      }
-    };
-    
-    fetchHistoryData();
-  }, [apiClient]);
-
-  const handlePageChange = (page: number) => {
-    // Only allow navigation to pages we have cursors for
-    if (page === 1 || pageCursors[page - 2]) {
-      setCurrentPage(page);
-      loadHistory(page);
-    } else {
-      console.warn('Cannot navigate to page', page, 'without cursor');
-      // Reset to first page if we lost cursor state
-      setCurrentPage(1);
-      setPageCursors([]);
-      loadHistory(1);
-    }
-  };
-
-  const loadHistory = async (targetPage?: number) => {
+  const loadHistory = useCallback(async (targetPage: number = currentPage, cursorToUse?: string) => {
     setLoading(true);
     setError(undefined);
     try {
-      const pageToLoad = targetPage || currentPage;
-      let cursor = undefined;
-      
-      // Get cursor for pagination
-      if (pageToLoad > 1 && pageCursors[pageToLoad - 2]) {
-        cursor = pageCursors[pageToLoad - 2];
+      const pageToLoad = targetPage;
+      let effectiveCursor = cursorToUse;      // If we have a cursor to use (passed in), use it
+      // For page 1, we always use undefined (no cursor)
+      if (pageToLoad === 1) {
+        effectiveCursor = undefined; // Always no cursor for page 1
       }
-
-      // Log request details
+      // Otherwise use the provided cursor
+      // The cursorToUse should be provided by the effect that tracks currentPage changes
+      
       console.debug('[History] Loading data:', {
         page: pageToLoad,
-        cursor,
+        cursor: effectiveCursor,
         filters: {
           system: selectedSystem,
           status: selectedStatus === 'all' ? undefined : selectedStatus,
-          hasSearchTerm: !!searchTerm.trim(),
-          sourceType: selectedSource || 'all',
+          search: searchTerm.trim() || undefined,
+          sourceType: selectedSource || undefined,
+          createdBy: selectedClassifier || undefined,
+          startDate,
+          endDate: endDate ? new Date(endDate + 'T23:59:59').toISOString() : undefined,
         }
       });
 
       const result = await apiClient.getClassificationHistory({
         systemCode: selectedSystem,
-        cursor,
+        cursor: effectiveCursor,
         limit: pageSize,
         status: selectedStatus === 'all' ? undefined : selectedStatus,
         startDate,
-        endDate: new Date(endDate + 'T23:59:59').toISOString(),
-        search: searchTerm.trim(), // Changed from searchTerm to search to match the interface
+        endDate: endDate ? new Date(endDate + 'T23:59:59').toISOString() : undefined,
+        search: searchTerm.trim() || undefined,
         sourceType: selectedSource || undefined,
         createdBy: selectedClassifier || undefined
       });
+        console.debug('[History] Raw API Response:', result);
+      console.debug('[History] First item from API:', result.items?.[0]);
+        const firstItem = result.items?.[0];
+      if (firstItem) {
+        console.debug('[History] First item firstLevelPrompt:', firstItem.firstLevelPrompt);
+        console.debug('[History] First item allPromptsDetail:', firstItem.allPromptsDetail);        
+        console.debug('[History] First item properties:', 
+          Object.keys(firstItem).map(key => {
+            const value = firstItem[key as keyof typeof firstItem];
+            return `${key}: ${typeof value}`;
+          }).join(', '));
+      }
 
-      // Log response details
-      // Detailed logging of response
-      console.debug('[History] Response Details:', {
-        itemCount: result.items?.length || 0,
-        total: result.totalCount,
-        hasNextPage: !!result.nextCursor,
-        cursor: result.nextCursor,
-        currentPage: pageToLoad,
-        firstItemId: result.items?.[0]?.id,
-        lastItemId: result.items?.[result.items?.length - 1]?.id,
-        firstItemDesc: result.items?.[0]?.description,
-        firstItemHasPrompt: !!result.items?.[0]?.prompt,  // Check if prompt exists in first item
-        pageSize,
-        pageCursors: [...pageCursors]
-      });
 
-      // Check if we got valid items
-      if (!result.items || result.items.length === 0) {
-        console.warn('No items returned from server, resetting to first page');
+      if (!result.items) {
+        console.warn('No items array in history response');
         setHistory([]);
-        setCurrentPage(1);
-        setPageCursors([]);
+        setTotalCount(0);
         setTotalPages(1);
+        if (pageToLoad > 1) setCurrentPage(1); // Reset to page 1 if current page had no items
+        setPageCursors([]); // Reset cursors
         return;
       }
 
-      // Update history items and total count
       setHistory(result.items);
       setTotalCount(result.totalCount);
-
-      // Calculate total pages based on current page and next cursor
-      // We can only show pages we can actually navigate to
-      let calculatedTotalPages = pageToLoad;
-      if (result.nextCursor) {
-        calculatedTotalPages += 1;
-      }
-      setTotalPages(calculatedTotalPages);
-
-      // Store cursor for next page if available
-      if (result.nextCursor) {
+      setTotalPages(Math.ceil(result.totalCount / pageSize) || 1);      if (result.nextCursor) {
         setPageCursors(prev => {
           const newCursors = [...prev];
-          newCursors[pageToLoad - 1] = result.nextCursor!;
+          // Cursor returned when fetching page N is the cursor *for* page N+1
+          // Store at index N-1 (0-indexed array where index corresponds to page-1)
+          if (pageToLoad - 1 < newCursors.length) {
+            newCursors[pageToLoad - 1] = result.nextCursor!;
+          } else {
+            // Ensure array is long enough, filling gaps with undefined if necessary
+            for (let i = newCursors.length; i < pageToLoad - 1; i++) {
+              newCursors.push(undefined as unknown as string);
+            }
+            newCursors.push(result.nextCursor!);
+          }
+          console.debug('[History] Updated pageCursors:', newCursors);
           return newCursors;
         });
       }
 
-      // Update current page if specified
-      if (targetPage) {
-        setCurrentPage(targetPage);
-      }
+
     } catch (err) {
       console.error('Failed to load history:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load classification history';
       setError(`Error loading history: ${errorMessage}`);
-      // Reset pagination state on error
       setHistory([]);
       setTotalCount(0);
       setTotalPages(1);
       setCurrentPage(1);
-      setPageCursors([]);
-    } finally {
+      setPageCursors([]);    } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiClient, selectedSystem, selectedStatus, startDate, endDate, searchTerm, selectedSource, selectedClassifier, pageSize]); // pageCursors and currentPage removed from deps of loadHistory
+  const handlePageChange = (page: number) => {
+      if (page === currentPage || loading) return; // Prevent re-fetch if same page or already loading
+      setCurrentPage(page);
+      // loadHistory will be called by the effect watching currentPage
   };
 
-  // Load unique classifier options
   useEffect(() => {
     const loadClassifiers = async () => {
       try {
-        const result = await apiClient.getClassificationHistory({
-          limit: 1000,
-          sourceType: 'batch'
-        });
+        // Consider if limiting this initial fetch for classifiers is needed if it's slow
+        const result = await apiClient.getClassificationHistory({ limit: 1000 }); 
         const uniqueClassifiers = [...new Set(result.items
-          .filter(item => item.sourceType === 'batch')
           .map(item => item.createdBy))]
+          .filter(Boolean) // Remove undefined/empty strings
           .sort();
         setClassifierOptions(uniqueClassifiers);
       } catch (err) {
@@ -240,38 +199,34 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
     };
     loadClassifiers();
   }, [apiClient]);
-
-  // Load history with filters and handle pagination
   useEffect(() => {
-    const isFilterChange = !currentPage || currentPage === 1;
-    
-    if (isFilterChange) {
-      // Reset pagination state when filters change
-      setCurrentPage(1);
-      setPageCursors([]);
-      setTotalPages(1);
-    }
-
-    const delayTimer = setTimeout(() => {
-      loadHistory(isFilterChange ? 1 : currentPage);
-    }, 300); // Debounce search
-
-    return () => clearTimeout(delayTimer);
-  }, [selectedSystem, selectedStatus, startDate, endDate, searchTerm, selectedSource, selectedClassifier, currentPage]);
+    // This effect resets to page 1 and clears cursors when filters change
+    console.debug('[History] Filter change detected, resetting page and cursors.');
+    setCurrentPage(1);
+    setPageCursors([]); // Clear cursors on filter change
+    // The change in currentPage will trigger the next useEffect to load data for page 1
+  }, [selectedSystem, selectedStatus, startDate, endDate, searchTerm, selectedSource, selectedClassifier]);
+  useEffect(() => {
+    // This effect handles loading data whenever currentPage changes OR when filters have reset currentPage to 1
+    // Determine the cursor: For page 1, it's always undefined.
+    // For page N > 1, it's pageCursors[N-2] (the cursor that led to page N-1 gives us the cursor for page N)
+    const cursorForPageToFetch = currentPage === 1 ? undefined : pageCursors[currentPage - 2];
+    console.debug(`[History] CurrentPage effect: loading page ${currentPage} with cursor "${cursorForPageToFetch}"`, {pageCursors});
+    loadHistory(currentPage, cursorForPageToFetch);
+  }, [currentPage, loadHistory]); // pageCursors is intentionally NOT a dependency to break the loop
 
   const handleReclassify = async (item: ClassificationHistory) => {
-    // Add check for missing systemCode
     if (!item.systemCode) {
       console.error('Cannot reclassify: systemCode is missing from history item.', item);
       setError('Cannot reclassify this item because its classification system is unknown.');
-      return; // Prevent modal from opening
+      return;
     }
     setSelectedItem(item);
     setShowManualModal(true);
   };
 
   const handleRerun = async (item: ClassificationHistory) => {
-    if (!confirm('Are you sure you want to rerun this classification?')) {
+    if (!window.confirm('Are you sure you want to rerun this classification?')) { // Changed to window.confirm
       return;
     }
 
@@ -285,11 +240,8 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
       if (result.error) {
         setError(`Rerun failed: ${result.error}`);
       }
-
-      // Always reload history after rerun to ensure we have the latest state
       setCurrentPage(1);
       setPageCursors([]);
-      setTotalPages(1);
       await loadHistory(1);
     } catch (err) {
       console.error('Failed to rerun classification:', err);
@@ -301,7 +253,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
   };
 
   const handleDelete = async (item: ClassificationHistory) => {
-    if (!confirm('Are you sure you want to delete this classification? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this classification? This action cannot be undone.')) { // Changed to window.confirm
       return;
     }
 
@@ -309,10 +261,9 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
     setError(undefined);
     try {
       await apiClient.deleteClassification(String(item.id));
-      // Reset to first page after delete
       setCurrentPage(1);
       setPageCursors([]);
-      loadHistory(1);
+      await loadHistory(1);
     } catch (err) {
       console.error('Failed to delete classification:', err);
       setError('Failed to delete classification');
@@ -328,61 +279,60 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
       description: result.description
     });
 
-    // Show error if classification failed, unless it's an informational error
     if (result.error && !isInformationalError(result.error)) {
       setError(`Classification failed: ${result.error}`);
     } else if (result.error && isInformationalError(result.error)) {
-      // Clear any previous critical errors if this is just informational
       setError(undefined);
       console.info(`Informational message from manual classification: ${result.error}`);
     }
 
-    // Always reload history after any classification attempt
-    console.debug('[Classification] Reloading history after attempt');
     setCurrentPage(1);
     setPageCursors([]);
-    setTotalPages(1);
     await loadHistory(1);
 
-    // Close modal
     setShowManualModal(false);
     setSelectedItem(null);
   };
 
   const handleView = (item: ClassificationHistory) => {
     console.debug('Viewing details for history item:', item);
-    // Set the item for the details modal and open it
     setDetailsItem(item);
     setShowDetailsModal(true);
   };
 
   const getClassifierBadge = (createdBy: string) => {
-    if (!createdBy || createdBy === 'direct') {
+    // ... (existing code for getClassifierBadge)
+    if (!createdBy || createdBy === 'direct') { // Consider 'direct' or make it consistent from backend
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 border-gray-200">
+            Direct Input
+          </span>
+        );
+      }
+      // Check if createdBy looks like a user ID (number) or a batch ID (string, potentially non-numeric)
+      if (/^\d+$/.test(createdBy)) { // If it's purely numeric, assume user ID
+        return (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-sky-100 text-sky-800 border-sky-200">
+              User ID: {createdBy}
+            </span>
+          );
+      }
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 border-gray-200">
-          Direct Input
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-purple-100 text-purple-800 border-purple-200">
+          Batch: {createdBy}
         </span>
       );
-    }
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-purple-100 text-purple-800 border-purple-200">
-        Batch ID: {createdBy}
-      </span>
-    );
   };
 
-  const getSourceBadge = (sourceType: ClassificationSourceType, createdBy: string) => {
-    console.debug('getSourceBadge called with:', { sourceType, createdBy });
-    // Define classes, adding one for 'api' and 'manual'
+  const getSourceBadge = (sourceType?: ClassificationSourceType, createdBy?: string) => { // made params optional for safety
     const classes: Record<string, string> = {
-      user: 'bg-blue-100 text-blue-800 border-blue-200',       // Often used for 'manual' as well
-      manual: 'bg-blue-100 text-blue-800 border-blue-200',     // Explicitly add 'manual'
+      user: 'bg-blue-100 text-blue-800 border-blue-200',       
+      manual: 'bg-blue-100 text-blue-800 border-blue-200',     
       batch: 'bg-purple-100 text-purple-800 border-purple-200',
-      api: 'bg-gray-100 text-gray-800 border-gray-200',         // Style for API/Direct Input
-      unknown: 'bg-gray-100 text-gray-800 border-gray-200'      // Fallback
+      api: 'bg-gray-100 text-gray-800 border-gray-200',         
+      unknown: 'bg-gray-100 text-gray-800 border-gray-200'      
     };
 
-    // Check if sourceType is missing or undefined (handle possible case mismatches from backend)
     if (!sourceType) {
       return (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${classes.unknown}`}>
@@ -390,25 +340,13 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
         </span>
       );
     }
-
-    // Handle sourceType consistently regardless of case
     const sourceTypeLower = sourceType.toLowerCase();
+    let label = 'Unknown';
+    if (sourceTypeLower.includes('user') || sourceTypeLower.includes('manual')) label = 'Manual Input';
+    else if (sourceTypeLower.includes('batch')) label = 'Batch';
+    else if (sourceTypeLower.includes('api')) label = 'API Input';
     
-    // Determine the label based on sourceType
-    let label = 'Unknown'; // Default value
-    if (sourceTypeLower.includes('user') || sourceTypeLower.includes('manual')) {
-      label = 'Manual Input';
-    } else if (sourceTypeLower.includes('batch')) {
-      label = 'Batch';
-    } else if (sourceTypeLower.includes('api')) {
-      label = 'API Input';
-    }
-
-    // Determine the detail based on sourceType (consistently checking lowercase)
     const detail = sourceTypeLower.includes('batch') && createdBy ? ` (${createdBy})` : '';
-
-    // Safely get the class, using fallback for unknown types
-    // Match sourceType to class keys more flexibly
     let badgeClass = classes.unknown;
     for (const [key, value] of Object.entries(classes)) {
       if (sourceTypeLower.includes(key)) {
@@ -416,7 +354,6 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
         break;
       }
     }
-
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${badgeClass}`}>
         {label}{detail}
@@ -425,33 +362,33 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
   };
 
   const getStatusBadge = (status: ClassificationStatus) => {
-    // 'all' is just for filtering, individual items should never have this status
+    // ... (existing code for getStatusBadge)
     if (status === 'all') {
-      console.warn('Unexpected status "all" for individual item');
+        console.warn('Unexpected status "all" for individual item');
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 border-gray-200">
+            Unknown
+          </span>
+        );
+      }
+      
+      const classes = {
+        success: 'bg-green-100 text-green-800 border-green-200',
+        partial: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        failed: 'bg-red-100 text-red-800 border-red-200'
+      };
+      
+      const labels = {
+        success: 'Success',
+        partial: 'Partial',
+        failed: 'Failed'
+      };
+  
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 border-gray-200">
-          Unknown
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${classes[status]}`}>
+          {labels[status]}
         </span>
       );
-    }
-    
-    const classes = {
-      success: 'bg-green-100 text-green-800 border-green-200',
-      partial: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      failed: 'bg-red-100 text-red-800 border-red-200'
-    };
-    
-    const labels = {
-      success: 'Success',
-      partial: 'Partial',
-      failed: 'Failed'
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${classes[status]}`}>
-        {labels[status]}
-      </span>
-    );
   };
 
   return (
@@ -523,13 +460,14 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                 <select
                   id="sourceType"
                   className="w-full px-4 py-2.5 bg-white border border-secondary-200 rounded-card text-secondary-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  value={selectedSource || ''} // Ensure value is empty string if undefined for controlled component
-                  onChange={(e) => setSelectedSource(e.target.value as '' | 'user' | 'batch' | 'api')}
+                  value={selectedSource || ''} 
+                  onChange={(e) => setSelectedSource(e.target.value as '' | 'user' | 'batch' | 'api' | 'manual')}
                 >
                   <option value="">All Sources</option>
-                  <option value="manual">Manual</option> {/* Changed 'user' to 'manual' for consistency if backend saves "manual" */}
-                  <option value="api">API</option> {/* Added API option */}
+                  <option value="manual">Manual</option> 
+                  <option value="api">API</option> 
                   <option value="batch">Batch</option>
+                  <option value="user">User (Legacy)</option>
                 </select>
               </div>
 
@@ -545,9 +483,11 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                   onChange={(e) => setSelectedClassifier(e.target.value)}
                 >
                   <option value="">All</option>
-                  <option value="direct">Direct Input</option>
+                  {/* <option value="direct">Direct Input</option> -- consider how to filter user ID vs batch ID */}
                   {classifierOptions.map(opt => (
-                    <option key={opt} value={opt}>Batch: {opt}</option>
+                    <option key={opt} value={opt}>
+                        {/^\d+$/.test(opt) ? `User ID: ${opt}` : `Batch: ${opt}`}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -629,11 +569,10 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
               <tbody className="bg-white divide-y divide-secondary-200">
                 {history.map((item) => (
                   <tr key={item.id} className={`hover:bg-secondary-50 ${
-                    item.status === 'failed' ? 'bg-red-50/30' : 
-                    item.status === 'partial' ? 'bg-yellow-50/30' : ''
+                    item.status === 'failed' && !isInformationalError(item.error) ? 'bg-red-50/30' : 
+                    item.status === 'partial' || (item.status === 'failed' && isInformationalError(item.error)) ? 'bg-yellow-50/30' : ''
                   }`}>
                     <td className="px-6 py-4 text-sm text-secondary-900 max-w-72">
-                      {/* Wrap description in Tooltip if RAG context exists */}
                       {item.ragContextUsed && item.ragContext ? (
                         <Tooltip
                           title={
@@ -670,27 +609,11 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                         {Object.entries(item.levels || {})
                           .sort(([a], [b]) => {
                             const levelOrder: Record<string, number> = {
-                              // Common Categories levels
-                              'SUBCAT1': 1,
-                              'SUBCAT2': 2,
-                              // UNSPSC levels
-                              'segment': 1,
-                              'family': 2,
-                              'class': 3,
-                              'commodity': 4,
-                              // Default for any other level codes if they appear
-                              'default': 99 
+                              'segment': 1, 'family': 2, 'class': 3, 'commodity': 4,
+                              'SUBCAT1': 1, 'SUBCAT2': 2, 'default': 99 
                             };
-                            // Helper to get order, defaulting for unknown levels
-                            const getOrder = (levelCode: string) => {
-                                if (levelCode.startsWith('SUBCAT')) return levelOrder[levelCode] ?? levelOrder['default'];
-                                return levelOrder[levelCode.toLowerCase()] ?? levelOrder['default'];
-                            };
-                            
-                            const orderA = getOrder(a);
-                            const orderB = getOrder(b);
-
-                            return orderA - orderB;
+                            const getOrder = (levelCode: string) => levelOrder[levelCode.toLowerCase()] ?? levelOrder['default'];
+                            return getOrder(a) - getOrder(b);
                           })
                           .map(([levelCode, category]) => (
                           <div key={levelCode}>
@@ -706,7 +629,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-600">
-                      {getSourceBadge(item.sourceType, item.createdBy)}
+                      {getSourceBadge(item.sourceType as ClassificationSourceType, item.createdBy)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-600">
                       <span title={formatDate(item.createdAt).fullText}>
@@ -717,7 +640,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                       {getClassifierBadge(item.createdBy)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
+                    <button
                         onClick={() => handleView(item)}
                         className="group relative inline-flex items-center gap-1.5 px-3 py-2 bg-white text-sm font-medium text-secondary-700 border border-secondary-200 rounded-lg hover:bg-secondary-50 hover:border-secondary-300 hover:text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 shadow-sm mr-1"
                         disabled={!checkPermission('history:view')}
@@ -729,24 +652,13 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                           viewBox="0 0 24 24" 
                           stroke="currentColor"
                         >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
-                          />
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" 
-                          />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                         <div className="absolute inset-0 rounded-lg overflow-hidden">
                           <div className="absolute inset-0 bg-gradient-to-r from-primary-100 to-secondary-100 opacity-0 group-hover:opacity-10 transition-opacity"></div>
                         </div>
                       </button>
-                      
                       <button
                         onClick={() => handleReclassify(item)}
                         className={`group relative inline-flex items-center gap-1.5 px-3 py-2 bg-white text-sm font-medium border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 shadow-sm ${
@@ -757,24 +669,9 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                         disabled={!checkPermission('classify:manual')}
                         title={!checkPermission('classify:manual') ? "Permission denied" : "Manually reclassify"}
                       >
-                        <svg 
-                          className={`w-4 h-4 ${!checkPermission('classify:manual') ? 'text-secondary-300' : 'text-secondary-500 group-hover:text-secondary-700'} transition-colors`}
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          stroke="currentColor"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" 
-                          />
-                        </svg>
-                        <div className="absolute inset-0 rounded-lg overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-r from-primary-100 to-secondary-100 opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                        </div>
+                        <svg className={`w-4 h-4 ${!checkPermission('classify:manual') ? 'text-secondary-300' : 'text-secondary-500 group-hover:text-secondary-700'} transition-colors`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        <div className="absolute inset-0 rounded-lg overflow-hidden"><div className="absolute inset-0 bg-gradient-to-r from-primary-100 to-secondary-100 opacity-0 group-hover:opacity-10 transition-opacity"></div></div>
                       </button>
-                      
                       <button
                         onClick={() => handleRerun(item)}
                         className={`group relative inline-flex items-center gap-1.5 px-3 py-2 bg-white text-sm font-medium border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 shadow-sm ${
@@ -785,24 +682,9 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                         disabled={!checkPermission('history:rerun')}
                         title={!checkPermission('history:rerun') ? "Permission denied" : "Rerun classification"}
                       >
-                        <svg 
-                          className={`w-4 h-4 ${!checkPermission('history:rerun') ? 'text-secondary-300' : 'text-secondary-500 group-hover:text-secondary-700'} transition-colors`}
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          stroke="currentColor"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
-                          />
-                        </svg>
-                        <div className="absolute inset-0 rounded-lg overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-r from-primary-100 to-secondary-100 opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                        </div>
+                        <svg className={`w-4 h-4 ${!checkPermission('history:rerun') ? 'text-secondary-300' : 'text-secondary-500 group-hover:text-secondary-700'} transition-colors`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        <div className="absolute inset-0 rounded-lg overflow-hidden"><div className="absolute inset-0 bg-gradient-to-r from-primary-100 to-secondary-100 opacity-0 group-hover:opacity-10 transition-opacity"></div></div>
                       </button>
-                      
                       <button
                         onClick={() => handleDelete(item)}
                         className={`group relative inline-flex items-center gap-1.5 px-3 py-2 bg-white text-sm font-medium border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm ${
@@ -813,22 +695,8 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
                         disabled={!checkPermission('history:delete')}
                         title={!checkPermission('history:delete') ? "Permission denied" : "Delete classification"}
                       >
-                        <svg 
-                          className={`w-4 h-4 ${!checkPermission('history:delete') ? 'text-red-300' : 'text-red-500 group-hover:text-red-700'} transition-colors`}
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          stroke="currentColor"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
-                          />
-                        </svg>
-                        <div className="absolute inset-0 rounded-lg overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-r from-red-100 to-red-50 opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                        </div>
+                        <svg className={`w-4 h-4 ${!checkPermission('history:delete') ? 'text-red-300' : 'text-red-500 group-hover:text-red-700'} transition-colors`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <div className="absolute inset-0 rounded-lg overflow-hidden"><div className="absolute inset-0 bg-gradient-to-r from-red-100 to-red-50 opacity-0 group-hover:opacity-10 transition-opacity"></div></div>
                       </button>
                     </td>
                   </tr>
@@ -844,95 +712,63 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
             </table>
           </div>
 
+          {/* Pagination controls */}
           <div className="mt-6 flex items-center justify-between">
             <div className="flex-1 flex justify-between items-center">
-              <p className="text-sm text-secondary-600">
+                <p className="text-sm text-secondary-600">
                 {history.length > 0
-                  ? `Showing ${Math.min((currentPage - 1) * pageSize + 1, totalCount || history.length)} - ${Math.min(currentPage * pageSize, totalCount || history.length)} of ${totalCount || history.length} results`
-                  : 'No results found'}
-              </p>
-              
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handlePageChange(1)}
-                  disabled={currentPage === 1 || loading}
-                  className="px-3 py-2 rounded-lg border border-secondary-200 text-sm font-medium text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  First
-                </button>
+                    ? `Showing ${Math.min((currentPage - 1) * pageSize + 1, totalCount)} - ${Math.min(currentPage * pageSize, totalCount)} of ${totalCount} results`
+                    : 'No results found'}
+                </p>
                 
+                <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1 || loading}
-                  className="px-3 py-2 rounded-lg border border-secondary-200 text-sm font-medium text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
+                    onClick={() => handlePageChange(1)}
+                    disabled={currentPage === 1 || loading}
+                    className="px-3 py-2 rounded-lg border border-secondary-200 text-sm font-medium text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >First</button>
+                <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || loading}
+                    className="px-3 py-2 rounded-lg border border-secondary-200 text-sm font-medium text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >Previous</button>
 
                 {(() => {
-                  const pages = [];
-                  const maxButtons = 5;
-                  let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-                  let end = Math.min(start + maxButtons - 1, totalPages);
-
-                  // Adjust start if we're at the end
-                  if (end === totalPages) {
-                    start = Math.max(1, end - maxButtons + 1);
-                  }
-
-                  // Show dots at start if needed
-                  if (start > 1) {
+                    const pages = [];
+                    const maxButtons = 5;
+                    let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+                    let end = Math.min(start + maxButtons - 1, totalPages);
+                    if (end === totalPages) start = Math.max(1, end - maxButtons + 1);
+                    if (start > 1) pages.push(<span key="start-dots" className="px-2 py-2 text-secondary-500">...</span>);
+                    for (let i = start; i <= end; i++) {
                     pages.push(
-                      <span key="start-dots" className="px-2 py-2 text-secondary-500">...</span>
-                    );
-                  }
-
-                  // Page numbers
-                  for (let i = start; i <= end; i++) {
-                    pages.push(
-                      <button
+                        <button
                         key={i}
                         onClick={() => handlePageChange(i)}
                         disabled={loading || (i > currentPage && !pageCursors[currentPage - 1])}
                         className={`px-3 py-2 rounded-lg border text-sm font-medium ${
-                          i === currentPage
-                            ? 'bg-primary-600 text-white border-primary-600'
-                            : 'border-secondary-200 text-secondary-700 hover:bg-secondary-50'
+                            i === currentPage ? 'bg-primary-600 text-white border-primary-600' : 'border-secondary-200 text-secondary-700 hover:bg-secondary-50'
                         }`}
-                      >
-                        {i}
-                      </button>
+                        >{i}</button>
                     );
-                  }
-
-                  // Show dots at end if needed
-                  if (end < totalPages) {
-                    pages.push(
-                      <span key="end-dots" className="px-2 py-2 text-secondary-500">...</span>
-                    );
-                  }
-
-                  return pages;
+                    }
+                    if (end < totalPages) pages.push(<span key="end-dots" className="px-2 py-2 text-secondary-500">...</span>);
+                    return pages;
                 })()}
 
                 <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages || loading || !pageCursors[currentPage - 1]}
-                  className="px-3 py-2 rounded-lg border border-secondary-200 text-sm font-medium text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-                
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages || loading || (currentPage < totalPages && !pageCursors[currentPage - 1])}
+                    className="px-3 py-2 rounded-lg border border-secondary-200 text-sm font-medium text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >Next</button>
                 <button
-                  onClick={() => handlePageChange(totalPages)}
-                  disabled={currentPage === totalPages || loading || totalPages <= 1}
-                  className="px-3 py-2 rounded-lg border border-secondary-200 text-sm font-medium text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Last
-                </button>
-              </div>
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={currentPage === totalPages || loading || totalPages <= 1}
+                    className="px-3 py-2 rounded-lg border border-secondary-200 text-sm font-medium text-secondary-700 hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >Last</button>
+                </div>
             </div>
-          </div>
+           </div>
         </div>
       </div>
 
@@ -946,7 +782,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
           onSubmit={handleManualClassification}
           apiClient={apiClient}
           description={selectedItem.description}
-          systemCode={selectedItem.systemCode}
+          systemCode={selectedItem.systemCode} 
           initialLevels={Object.fromEntries(
             Object.entries(selectedItem.levels).map(([code, category]) => [code, category.code])
           )}
