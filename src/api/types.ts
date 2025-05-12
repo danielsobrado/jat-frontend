@@ -634,6 +634,8 @@ export interface ClassificationResult {
   ragContextUsed: boolean;
   ragContext?: string;
   levelResponses?: { [key: string]: string }; // Level-specific LLM responses
+  prompt?: string; // The full prompt used for classification
+  allPromptsDetail?: { [key: string]: string }; // Detailed prompts for each level
 }
 
 export interface ClassificationError {
@@ -698,6 +700,8 @@ export interface BatchItemResult {
   result?: ClassificationResult;
   error?: string | ClassificationError; // Allow error to be object or string
   key?: string; // Added key field for identifying batch items
+  prompt?: string; // The full prompt used for classification
+  allPromptsDetail?: { [key: string]: string }; // Detailed prompts for each level
 }
 
 export interface BatchJobParams {
@@ -731,6 +735,7 @@ export interface ClassificationHistory {
   levelResponses?: { [key: string]: string }; // Level-specific LLM responses
   prompt?: string; // The full prompt used for classification
   key?: string; // Key field for batch identification
+  allPromptsDetail?: { [key: string]: string }; // Detailed prompts for each level
 }
 
 export interface ClassificationHistoryPage {
