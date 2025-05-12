@@ -16,6 +16,12 @@ const isValidLevel = (level: CategoryLevel | undefined | null): boolean => {
            typeof level.name === 'string' && level.name.length > 0;
 };
 
+// Function to check if an item has been processed (has either a result or error)
+export const isProcessedItem = (item: BatchItemResult | undefined | null): boolean => {
+    if (!item) return false;
+    return (!!item.result || !!item.error);
+};
+
 // Function to ensure a key preserves decimal format (if it exists in original form)
 export const preserveDecimalInKey = (key: string | undefined | null): string => {
     if (!key) return '';

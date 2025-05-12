@@ -9,7 +9,8 @@ import {
     getFormattedErrorMessage,
     isSuccessfulItem,
     isFailedItem,
-    isPartialItem
+    isPartialItem,
+    isProcessedItem
 } from './utils/batchJobUtils'; // Import all utility functions
 import { ExecutionStatusBadge, ResultStatusBadge } from './components/JobStatusDisplay'; // Assuming these exist
 import './BatchJobDetailsModal.css'; // Assuming this exists
@@ -160,14 +161,15 @@ const BatchJobDetailsModalComponent = ({ job, open, onClose }: BatchJobDetailsMo
   }, [onClose]); // Dependency array is correct
 
   // --- Render Helper Functions ---
-
   const renderSummary = useCallback(() => {
-    const resultsArray = job.results || [];
+    const resultsArray = job.results || [];    // Filter to show only processed items, rely on server count if available
+    const processedCount = job.processedItems !== undefined ? job.processedItems : resultsArray.filter(isProcessedItem).length;
+    const processedResults = resultsArray.filter(isProcessedItem);
 
-    // Use refined utils for counting
-    const successItems = resultsArray.filter(isSuccessfulItem).length;
-    const partialItems = resultsArray.filter(isPartialItem).length;
-    const failedItems = resultsArray.filter(isFailedItem).length;
+    // Use refined utils for counting on processed items only
+    const successItems = processedResults.filter(isSuccessfulItem).length;
+    const partialItems = processedResults.filter(isPartialItem).length;
+    const failedItems = processedResults.filter(isFailedItem).length;
 
     return (
       <div className="mb-6 space-y-4">
@@ -221,23 +223,29 @@ const BatchJobDetailsModalComponent = ({ job, open, onClose }: BatchJobDetailsMo
           <div className="p-3 bg-secondary-50 rounded-md">
             <div className="text-xs text-secondary-500 mb-1">Duration</div>
             <div className="text-sm text-secondary-700">{timingInfo.duration}</div>
-          </div>
-          <div className="p-3 bg-secondary-50 rounded-md">
+          </div>          <div className="p-3 bg-secondary-50 rounded-md">
             <div className="text-xs text-secondary-500 mb-1">Batch Size</div>
-            <div className="text-sm text-secondary-700">{(job.results || []).length} items</div>
+            <div className="text-sm text-secondary-700">
+              {(job.results || []).filter(isProcessedItem).length} / {(job.results || []).length} items processed
+            </div>
           </div>
         </div>
       </div>
     );
   }, [job, timingInfo]);
-
   const renderResultDetails = useCallback(() => {
     const resultsArray = job.results || [];
+    
+    // Filter to only show processed items
+    const processedResults = resultsArray.filter(isProcessedItem);
+    
     if (!resultsArray.length) {
       return <div className="text-center py-8"><p className="text-secondary-600">No results available for this job yet.</p></div>;
     }
-
-    return (
+    
+    if (!processedResults.length) {
+      return <div className="text-center py-8"><p className="text-secondary-600">No processed items available yet. Processing is in progress.</p></div>;
+    }    return (
       <div className="overflow-x-auto border border-secondary-200 rounded-md">
         <table className="min-w-full divide-y divide-secondary-200">
           <thead className="bg-secondary-50 sticky top-0 z-10"> {/* Make header sticky */}
@@ -248,7 +256,7 @@ const BatchJobDetailsModalComponent = ({ job, open, onClose }: BatchJobDetailsMo
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-secondary-200">
-            {resultsArray.map((resultItem: BatchItemResult, index: number) => {
+            {processedResults.map((resultItem: BatchItemResult, index: number) => {
               // Determine individual item status using refined utils
               let status: 'Success' | 'Partial' | 'Failed' = 'Failed'; // Default to Failed
               let statusClass = 'bg-red-100 text-red-800 border-red-200';
@@ -377,13 +385,11 @@ const BatchJobDetailsModalComponent = ({ job, open, onClose }: BatchJobDetailsMo
                 <div className="border-t border-secondary-200 pt-4">
                     {renderJobInfo()}
                 </div>
-                 <div className="border-t border-secondary-200 pt-4">
-                    <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-lg font-semibold text-secondary-800">Results Breakdown</h3>
-                        <span className="text-sm text-secondary-500">
-                            {`${(job.results || []).length} items processed`}
-                        </span>
-                    </div>
+                 <div className="border-t border-secondary-200 pt-4">                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-lg font-semibold text-secondary-800">Results Breakdown</h3>                    <span className="text-sm text-secondary-500">
+                        {`${job.processedItems !== undefined ? job.processedItems : (job.results || []).filter(isProcessedItem).length} of ${(job.results || []).length} items processed`}
+                    </span>
+                </div>
                     {renderResultDetails()}
                  </div>
              </div>
