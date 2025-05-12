@@ -103,17 +103,18 @@ export interface ApiClient {
 
   /** Initialize the API client */
   initialize(): Promise<void>;
-
   /**
    * Classify a description using AI
    * @param description - Text to classify
    * @param systemCode - Optional classification system code
    * @param additionalContext - Optional context for classification
+   * @param modelOverride - Optional LLM model to use for this classification
    */
   classify(
     description: string,
     systemCode?: string,
-    additionalContext?: string
+    additionalContext?: string,
+    modelOverride?: string
   ): Promise<ClassificationResult>;
 
   /**
@@ -367,8 +368,7 @@ export interface LlmConfig {
     port: number;
     requestTimeout: string;
     logLevel: string;
-  };
-  service?: {
+  };  service?: {
     batchSize: number;
     dataPath: string;
     commonDataPath: string;
@@ -376,6 +376,7 @@ export interface LlmConfig {
     llmEndpoint: string;
     llmApiKey: string;
     llmModel: string;
+    llmRetryModels?: string[];
     llmMaxTokens: number;
     llmTemperature: number;
     useTypePrompt: boolean;
@@ -452,6 +453,7 @@ export interface UpdateServiceConfig {
   llmEndpoint?: string;
   llmApiKey?: string; // Allow sending new key, BEWARE: sent in plain text
   llmModel?: string;
+  llmRetryModels?: string[];
   llmMaxTokens?: number;
   llmTemperature?: number;
   useTypePrompt?: boolean;
@@ -538,6 +540,7 @@ export interface ServiceConfig {
   llmEndpoint?: string;
   llmApiKey?: string; // Expect "[REDACTED]" or similar mask from GET
   llmModel?: string;
+  llmRetryModels?: string[];
   llmMaxTokens?: number;
   llmTemperature?: number;
   useTypePrompt?: boolean;
@@ -643,6 +646,7 @@ export interface ClassificationResult {
   levelResponses?: { [key: string]: string }; // Level-specific LLM responses
   firstLevelPrompt?: string; // Renamed from prompt to match backend changes
   allPromptsDetail?: string; // JSON string of all prompts
+  modelUsed?: string;
 }
 
 export interface ClassificationError {
@@ -668,6 +672,7 @@ export interface ManualClassificationRequest {
   systemCode: string;
   selectedSystem?: string; // Optional based on your backend expectation, usually same as systemCode
   additionalContext?: string;
+  modelOverride?: string; // Optional LLM model override for classification
   levels: { [levelCode: string]: string };
 }
 
@@ -746,6 +751,7 @@ export interface ClassificationHistory {
   firstLevelPrompt?: string; // Renamed from prompt
   key?: string; 
   allPromptsDetail?: string; // JSON string of all prompts
+  modelUsed?: string; 
 }
 
 export interface ClassificationHistoryPage {

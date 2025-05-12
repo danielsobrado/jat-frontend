@@ -11,7 +11,7 @@ import {
 export class ClassificationService {
   constructor(private core: ApiClientCore) {}
 
-  async classify(description: string, systemCode: string = 'UNSPSC', additionalContext?: string): Promise<ClassificationResult> {
+  async classify(description: string, systemCode: string = 'UNSPSC', additionalContext?: string, modelOverride?: string): Promise<ClassificationResult> {
     const requestId = Math.random().toString(36).substring(7);
     try {
       const response = await this.core.fetchWithTimeout(formatEndpoint('/classify'), {
@@ -22,6 +22,7 @@ export class ClassificationService {
           system_code: systemCode,
           additional_context: additionalContext,
           save_failed: true,
+          model_override: modelOverride,
         }),
       });
       const result = await response.json();
@@ -57,6 +58,7 @@ export class ClassificationService {
                 description: request.description,
                 systemCode: request.systemCode, // Ensure backend expects camelCase or adjust here
                 levels: request.levels,
+                model_override: request.modelOverride, // Pass selected model if available
             }),
         });
         if (!response.ok) {
@@ -155,6 +157,7 @@ export class ClassificationService {
         error: item.error,
         firstLevelPrompt: item.first_level_prompt ?? item.firstLevelPrompt,
         allPromptsDetail: item.all_prompts_detail ?? item.allPromptsDetail,
+        modelUsed: item.model_used ?? item.modelUsed,
       }));
 
       return {

@@ -100,7 +100,7 @@ export class WebApiClient implements ApiClient {
   async getPermissions(): Promise<PermissionListResponse> { return this.permissionService.getPermissions(); }
 
   // Classification
-  async classify(description: string, systemCode?: string, additionalContext?: string): Promise<ClassificationResult> { return this.classificationService.classify(description, systemCode, additionalContext); }
+  async classify(description: string, systemCode?: string, additionalContext?: string, modelOverride?: string): Promise<ClassificationResult> { return this.classificationService.classify(description, systemCode, additionalContext, modelOverride); }
   async classifyManually(request: ManualClassificationRequest): Promise<ClassificationResult> { return this.classificationService.classifyManually(request); }
   async rerunClassification(id: string): Promise<ClassificationResult> { return this.classificationService.rerunClassification(id); }
   async deleteClassification(id: string): Promise<void> { return this.classificationService.deleteClassification(id); }

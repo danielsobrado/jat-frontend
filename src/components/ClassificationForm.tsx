@@ -32,6 +32,10 @@ export const ClassificationForm: React.FC<ClassificationFormProps> = ({
   const [systems, setSystems] = useState<ClassificationSystem[]>([]);
   const [systemLevels, setSystemLevels] = useState<ClassificationLevel[]>([]);
   
+  // State for model selection
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  
   // Modal state
   const [showModal, setShowModal] = useState(false);
   
@@ -71,6 +75,35 @@ export const ClassificationForm: React.FC<ClassificationFormProps> = ({
     loadSystemLevels();
   }, [apiClient, selectedSystem]);
 
+  // Load available LLM models from config
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const config = await apiClient.getConfig();
+        const models = [];
+        
+        // Add the main model
+        if (config.service?.llmModel) {
+          models.push(config.service.llmModel);
+        }
+        
+        // Add retry models if available
+        if (config.service?.llmRetryModels && Array.isArray(config.service.llmRetryModels)) {
+          models.push(...config.service.llmRetryModels);
+        }
+        
+        setAvailableModels(models);
+        // Set the default model to the main one
+        if (models.length > 0) {
+          setSelectedModel(models[0]);
+        }
+      } catch (error) {
+        console.error('Failed to load LLM models:', error);
+      }
+    };
+    loadModels();
+  }, [apiClient]);
+
   // Set the active LLM tab when results are received
   useEffect(() => {
     if (result && systemLevels.length > 0) {
@@ -84,7 +117,6 @@ export const ClassificationForm: React.FC<ClassificationFormProps> = ({
       }
     }
   }, [result, systemLevels]);
-
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -95,7 +127,7 @@ export const ClassificationForm: React.FC<ClassificationFormProps> = ({
     setLevelResponses({});
     
     try {
-      const classificationResult = await apiClient.classify(description, selectedSystem, additionalContext);
+      const classificationResult = await apiClient.classify(description, selectedSystem, additionalContext, selectedModel);
       setResult(classificationResult);
       
       // Check if the backend already provided level-specific responses
@@ -131,7 +163,6 @@ export const ClassificationForm: React.FC<ClassificationFormProps> = ({
     setResult(null);
     setLevelResponses({});
   };
-
   const handleManualClassification = async (manualResult: ClassificationResult) => {
     try {
       // Prepare the request payload according to ManualClassificationRequest interface
@@ -140,6 +171,7 @@ export const ClassificationForm: React.FC<ClassificationFormProps> = ({
         systemCode: selectedSystem,
         selectedSystem: selectedSystem, // As per interface, using selectedSystem state
         additionalContext: additionalContext,
+        modelOverride: selectedModel, // Pass the selected model to the manual classification
         levels: Object.fromEntries(
           Object.entries(manualResult.levels).map(([levelCode, categoryLevel]) => [
             levelCode,
@@ -214,24 +246,45 @@ export const ClassificationForm: React.FC<ClassificationFormProps> = ({
   return (
     <div className="max-w-8xl mx-auto space-y-10" style={{ minWidth: '40rem', paddingRight: '1rem', paddingLeft: '1rem'}}>
       <div className="bg-white shadow-card rounded-card p-8 w-full" style={{ paddingRight: '5rem', paddingLeft: '3rem'}}>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label htmlFor="system" className="block text-sm font-medium text-secondary-700">
-              Classification System:
-            </label>
-            <select
-              id="system"
-              value={selectedSystem}
-              onChange={handleSystemChange}
-              className="w-full px-4 py-2.5 bg-white border border-secondary-200 rounded-card text-secondary-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              style={{ minWidth: '10rem', maxWidth: '30rem', paddingRight: '1rem', paddingLeft: '1rem'}}
-            >
-              {systems.map(system => (
-                <option key={system.code} value={system.code}>
-                  {system.name}
-                </option>
-              ))}
-            </select>
+        <form onSubmit={handleSubmit} className="space-y-6">          <div className="flex flex-col md:flex-row md:space-x-6 md:space-y-0 space-y-6">
+            <div className="space-y-2 flex-1">
+              <label htmlFor="system" className="block text-sm font-medium text-secondary-700">
+                Classification System:
+              </label>
+              <select
+                id="system"
+                value={selectedSystem}
+                onChange={handleSystemChange}
+                className="w-full px-4 py-2.5 bg-white border border-secondary-200 rounded-card text-secondary-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                style={{ paddingRight: '1rem', paddingLeft: '1rem'}}
+              >
+                {systems.map(system => (
+                  <option key={system.code} value={system.code}>
+                    {system.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2 flex-1">
+              <label htmlFor="model" className="block text-sm font-medium text-secondary-700">
+                LLM Model:
+              </label>
+              <select
+                id="model"
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="w-full px-4 py-2.5 bg-white border border-secondary-200 rounded-card text-secondary-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                style={{ paddingRight: '1rem', paddingLeft: '1rem'}}
+                disabled={loading || availableModels.length <= 1}
+              >
+                {availableModels.map(model => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -332,6 +385,14 @@ export const ClassificationForm: React.FC<ClassificationFormProps> = ({
             <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50/50 px-4 py-3 text-yellow-800 text-sm">
               <p className="font-medium">Classification completed with issues:</p>
               <p className="mt-1">{result.error}</p>
+            </div>
+          )}
+          
+          {/* Display the model used for classification */}
+          {result.modelUsed && (
+            <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-3 text-blue-800 text-sm">
+              <p className="font-medium">Model Used:</p>
+              <p className="mt-1">{result.modelUsed}</p>
             </div>
           )}
           
