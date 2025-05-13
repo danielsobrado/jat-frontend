@@ -13,6 +13,7 @@ export class ClassificationService {
 
   async classify(description: string, systemCode: string = 'UNSPSC', additionalContext?: string, modelOverride?: string): Promise<ClassificationResult> {
     const requestId = Math.random().toString(36).substring(7);
+    console.log("[ApiClient] classify Request ID:", requestId);
     try {
       const response = await this.core.fetchWithTimeout(formatEndpoint('/classify'), {
         method: 'POST',
@@ -50,6 +51,7 @@ export class ClassificationService {
 
   async classifyManually(request: ManualClassificationRequest): Promise<ClassificationResult> {
      const requestId = Math.random().toString(36).substring(7);
+      console.log("[ApiClient] classifyManually Request ID:", requestId);
      try {
         const response = await this.core.fetchWithTimeout(formatEndpoint('/classify/manual'), {
             method: 'POST',

@@ -181,6 +181,7 @@ export const ClassificationForm: React.FC<ClassificationFormProps> = ({
       };
 
       const updatedResult = await apiClient.classifyManually(requestPayload);
+      console.log("Manual classification result:", updatedResult);
       setResult(updatedResult);
 
       // Use level-specific responses from the result if available

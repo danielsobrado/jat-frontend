@@ -1,6 +1,6 @@
 // src/components/BatchJobsTab/utils/csvGenerator.ts
 import { saveAs } from 'file-saver';
-import { BatchClassificationResult, BatchItemResult, ClassificationResult, CategoryLevel, ClassificationError } from '../../../api/types'; // ClassificationResult and CategoryLevel are used
+import { BatchClassificationResult, BatchItemResult, ClassificationError } from '../../../api/types';
 
 // Helper function to escape CSV values
 const escapeCsvValue = (value: any): string => {
@@ -33,7 +33,7 @@ const getMaxKeyParts = (results: BatchItemResult[]): number => {
             maxParts = Math.max(maxParts, keyParts.length);
         }
     }
-    return maxParts === 0 && results.some(r => r.key) ? 1 : maxParts; // If keys exist but are single, still have 1 key column
+    return maxParts === 0 && results.some(r => r.key !== undefined && r.key !== null && r.key !== '') ? 1 : maxParts; // If keys exist but are single, still have 1 key column
 };
 
 const getKeyHeaders = (job: BatchClassificationResult): string[] => {
@@ -63,7 +63,7 @@ export const downloadJobReport = (job: BatchClassificationResult, format: Downlo
         
         const levelOrder: Record<string, number> = {
             'segment': 1, 'family': 2, 'class': 3, 'commodity': 4,
-            'SUBCAT1': 1, 'SUBCAT2': 2
+            'subcat1': 1, 'subcat2': 2 // Ensure robust matching for common cats too
         };
         const sortedLevels = Array.from(allLevels).sort((a, b) => 
             ((levelOrder[a.toLowerCase()] ?? 999) - (levelOrder[b.toLowerCase()] ?? 999)) || a.localeCompare(b) // Use toLowerCase for robust key matching
@@ -75,7 +75,6 @@ export const downloadJobReport = (job: BatchClassificationResult, format: Downlo
         }
         headers.push(escapeCsvValue('Description'));
         headers.push(escapeCsvValue('Additional_Context'));
-        headers.push(escapeCsvValue('Item_Classification_Status'));
 
         for (const level of sortedLevels) {
             headers.push(escapeCsvValue(`${level}_Code`));
@@ -83,6 +82,7 @@ export const downloadJobReport = (job: BatchClassificationResult, format: Downlo
         }
         
         if (format === 'full') {
+            headers.push(escapeCsvValue('Item_Classification_Status')); 
             headers.push(escapeCsvValue('RAG_Context_Used'));
             headers.push(escapeCsvValue('RAG_Context_Content'));
             for (const level of sortedLevels) {
@@ -106,12 +106,11 @@ export const downloadJobReport = (job: BatchClassificationResult, format: Downlo
             }
             
             row.push(escapeCsvValue(item.description));
-            row.push(escapeCsvValue(item.additional_context || '')); // Use snake_case and provide default
+            row.push(escapeCsvValue(item.additional_context || '')); 
 
-            let itemStatus = 'Failed'; 
-            if (item.error) { itemStatus = 'Failed'; } 
-            else if (item.result) { itemStatus = item.result.status; }
-            row.push(escapeCsvValue(itemStatus));
+            let itemStatusValue = 'Failed'; 
+            if (item.error) { itemStatusValue = 'Failed'; } 
+            else if (item.result) { itemStatusValue = item.result.status; }
 
             for (const level of sortedLevels) {
                 const category = item.result?.levels?.[level];
@@ -120,6 +119,7 @@ export const downloadJobReport = (job: BatchClassificationResult, format: Downlo
             }
             
             if (format === 'full') {
+                row.push(escapeCsvValue(itemStatusValue)); 
                 row.push(escapeCsvValue(item.result?.ragContextUsed ? 'Yes' : 'No'));
                 row.push(escapeCsvValue(item.result?.ragContext || ''));
                 
@@ -128,9 +128,7 @@ export const downloadJobReport = (job: BatchClassificationResult, format: Downlo
                 );
                 row.push(...llmReplies);
 
-                // Access Prompt (first-level) and AllPromptsDetail from item.result
-                // These fields were added to ClassificationResult in api/types.ts
-                row.push(escapeCsvValue(item.result?.prompt || '')); 
+                row.push(escapeCsvValue(item.result?.firstLevelPrompt || '')); 
                 row.push(escapeCsvValue(item.result?.allPromptsDetail || ''));
             }
 

@@ -330,6 +330,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
       manual: 'bg-blue-100 text-blue-800 border-blue-200',     
       batch: 'bg-purple-100 text-purple-800 border-purple-200',
       api: 'bg-gray-100 text-gray-800 border-gray-200',         
+      ui: 'bg-teal-100 text-teal-800 border-teal-200',
       unknown: 'bg-gray-100 text-gray-800 border-gray-200'      
     };
 
@@ -344,6 +345,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
     let label = 'Unknown';
     if (sourceTypeLower.includes('user') || sourceTypeLower.includes('manual')) label = 'Manual Input';
     else if (sourceTypeLower.includes('batch')) label = 'Batch';
+    else if (sourceTypeLower === 'ui') label = 'UI (Web)';
     else if (sourceTypeLower.includes('api')) label = 'API Input';
     
     const detail = sourceTypeLower.includes('batch') && createdBy ? ` (${createdBy})` : '';

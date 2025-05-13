@@ -1,5 +1,5 @@
 // src/components/BatchJobsTab/BatchJobDetailsModal.tsx
-import React, { useMemo, useCallback, useRef, useEffect, memo } from 'react';
+import React, { useMemo, useCallback, useRef, useEffect, memo, JSX } from 'react';
 import { Modal, Typography } from 'antd';
 // Import necessary types from your API types file
 import { BatchClassificationResult, BatchItemResult, CategoryLevel } from '../../api/types'; // Ensure CategoryLevel is imported if used
@@ -12,7 +12,7 @@ import {
     isPartialItem,
     isProcessedItem
 } from './utils/batchJobUtils'; // Import all utility functions
-import { ExecutionStatusBadge, ResultStatusBadge } from './components/JobStatusDisplay'; // Assuming these exist
+import { ExecutionStatusBadge, ResultStatusBadge } from './components/JobStatusDisplay'; 
 import './BatchJobDetailsModal.css'; // Assuming this exists
 
 // Define Props Interface
