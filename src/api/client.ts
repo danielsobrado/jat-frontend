@@ -1,9 +1,8 @@
-import { API_ENDPOINTS, formatEndpoint } from '../config/api';
 import {
   ApiClient,
   ClassificationResult,
   LlmConfig,
-  UpdateConfigRequest, // Ensure we're importing UpdateConfigRequest
+  UpdateConfigRequest, 
   ClassificationSystem,
   ClassificationLevel,
   Category,
@@ -15,7 +14,6 @@ import {
   ManualClassificationRequest,
   BatchJobsPage,
   BatchJobParams,
-  ClassificationHistory,
   RagInfoItem,
   RagInfoPage,
   RagInfoRequestParams,
