@@ -229,13 +229,14 @@ export const ClassificationDetailsModal: React.FC<ClassificationDetailsModalProp
                     </p>
                   </div>
                   <div><p className="text-sm font-medium text-secondary-500">Source</p><p className="text-sm text-secondary-900 mt-1">{getSourceTypeLabel(item.sourceType)}</p></div>
-                  {item.key && (<div className="md:col-span-1"><p className="text-sm font-medium text-secondary-500">Item Key</p><p className="text-sm text-secondary-900 mt-1 break-words">{item.key}</p></div>)}                  {item.additionalContext && (<div className="md:col-span-2"><p className="text-sm font-medium text-secondary-500">Additional Context</p><p className="text-sm text-secondary-900 mt-1 whitespace-pre-wrap">{item.additionalContext}</p></div>)}
                   {item.modelUsed && (
                     <div>
                       <p className="text-sm font-medium text-secondary-500">Model Used</p>
                       <p className="text-sm text-secondary-900 mt-1">{item.modelUsed}</p>
                     </div>
                   )}
+                  {item.key && (<div className="md:col-span-1"><p className="text-sm font-medium text-secondary-500">Item Key</p><p className="text-sm text-secondary-900 mt-1 break-words">{item.key}</p></div>)}
+                  {item.additionalContext && (<div className="md:col-span-2"><p className="text-sm font-medium text-secondary-500">Additional Context</p><p className="text-sm text-secondary-900 mt-1 whitespace-pre-wrap">{item.additionalContext}</p></div>)}
                   {item.error && (
                     <div className="md:col-span-2">
                       <p className={`text-sm font-medium ${isInformationalError(item.error) ? 'text-yellow-600' : 'text-red-600'}`}>Error/Note</p>

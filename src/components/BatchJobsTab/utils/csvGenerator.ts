@@ -81,8 +81,9 @@ export const downloadJobReport = (job: BatchClassificationResult, format: Downlo
             headers.push(escapeCsvValue(`${level}_Name`));
         }
         
+        headers.push(escapeCsvValue('Item_Classification_Status')); // Moved here: Add status for both simple and full
+
         if (format === 'full') {
-            headers.push(escapeCsvValue('Item_Classification_Status')); 
             headers.push(escapeCsvValue('RAG_Context_Used'));
             headers.push(escapeCsvValue('RAG_Context_Content'));
             for (const level of sortedLevels) {
@@ -118,8 +119,9 @@ export const downloadJobReport = (job: BatchClassificationResult, format: Downlo
                 row.push(escapeCsvValue(category?.name || ''));
             }
             
+            row.push(escapeCsvValue(itemStatusValue)); // Moved here: Add status value for both simple and full
+            
             if (format === 'full') {
-                row.push(escapeCsvValue(itemStatusValue)); 
                 row.push(escapeCsvValue(item.result?.ragContextUsed ? 'Yes' : 'No'));
                 row.push(escapeCsvValue(item.result?.ragContext || ''));
                 
