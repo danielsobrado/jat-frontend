@@ -14953,4 +14953,4 @@ Helper hooks encapsulate data fetching, state management, and logic for specific
 *   Permissions (fetched via `useAuth`) are checked within components to enable/disable actions or show/hide UI elements.
 *   Styling leverages Tailwind CSS utility classes (defined in `src/index.css`) and component-specific CSS files (e.g., `left-sidebar.css`). Ant Design (`antd`) components are used for tables, modals, forms, etc., providing a consistent look and feel.
 
-You are an expert coder tasked with the above task and need to strictly follow the instructions. Use the files provided as existing reference and code base.
+This is my frontend.

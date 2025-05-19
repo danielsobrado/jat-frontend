@@ -14,6 +14,7 @@ import UserManagementPage from './pages/UserManagementPage'; // <<< Import Admin
 import RoleManagementPage from './pages/RoleManagementPage';   // <<< Import Admin Pages
 import './App.css';
 import { Spin } from 'antd'; // For loading indicator
+import ChatPage from './pages/ChatPage';
 
 // --- Protected Route Component ---
 interface ProtectedRouteProps {
@@ -129,6 +130,11 @@ function App() {
               <Route path="/batch/jobs" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('classify:batch')}><BatchJobsPage apiClient={apiClient} /></ProtectedRoute>} />
               <Route path="/history" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('history:view')}><HistoryPage apiClient={apiClient} /></ProtectedRoute>} />
               <Route path="/rag-info" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('rag:view')}><RagInfoPage apiClient={apiClient} /></ProtectedRoute>} />
+              <Route path="/chat" element={
+                <ProtectedRoute isAllowed={!authEnabled || checkPermission('chat:use')}> {/* Example permission */}
+                  <ChatPage />
+                </ProtectedRoute>
+              } />
               <Route path="/settings" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('config:view')}><SettingsPage apiClient={apiClient} /></ProtectedRoute>} />
 
               {/* Admin Routes */}

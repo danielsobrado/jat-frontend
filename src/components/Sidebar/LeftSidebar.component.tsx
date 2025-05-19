@@ -8,10 +8,11 @@ import { useAuth } from '../../context/AuthContext'; // Import useAuth hook
 
 // Import constants and types
 import {
-  SIDEBAR_ITEMS,
+  SIDEBAR_ITEMS as BASE_SIDEBAR_ITEMS,
   BOTTOM_SIDEBAR_ITEMS,
   SIDEBAR_NESTED_KEYS,
   RAG_INFO_SIDEBAR_ITEM,
+  CHAT_SIDEBAR_ITEM,
   ADMIN_SIDEBAR_ITEMS, // Import Admin items
 } from '../../constants/LeftSidebar.constants';
 import { SidebarItem as SidebarItemEnum } from '../../enum/sidebar.enum';
@@ -67,17 +68,21 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
   // Map menu items with conditional RAG and Admin items
   const topMenuItems: MenuProps['items'] = useMemo(() => {
-    let items = [...SIDEBAR_ITEMS]; // Start with base items
+    let items = [...BASE_SIDEBAR_ITEMS]; // Start with base items from constants
 
-    // Insert RAG item after History if enabled
-    if (ragEnabled === true) { // Explicitly check if true
+    // Determine the insertion index for Chat and RAG
+    const historyIndex = items.findIndex(item => item?.key === SidebarItemEnum.HISTORY);
+    let insertionPoint = historyIndex !== -1 ? historyIndex + 1 : items.length;
+
+    // Insert Chat Item
+    items.splice(insertionPoint, 0, CHAT_SIDEBAR_ITEM);
+    insertionPoint++; // Move insertion point for next item
+
+    // Insert RAG item if enabled
+    if (ragEnabled === true) {
       console.log("RAG is enabled, adding RAG menu item");
-      const historyIndex = items.findIndex(item => item?.key === SidebarItemEnum.HISTORY);
-      if (historyIndex !== -1) {
-        items.splice(historyIndex + 1, 0, RAG_INFO_SIDEBAR_ITEM);
-      } else {
-        items.push(RAG_INFO_SIDEBAR_ITEM);
-      }
+      items.splice(insertionPoint, 0, RAG_INFO_SIDEBAR_ITEM);
+      // insertionPoint++; // Not needed if RAG is last dynamic item before admin
     } else {
       console.log("RAG is not enabled, not adding RAG menu item");
     }

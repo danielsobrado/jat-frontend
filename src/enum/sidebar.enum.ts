@@ -7,6 +7,7 @@ export enum SidebarItem {
   BATCH_JOBS = '/batch/jobs',
   HISTORY = '/history',
   RAG_INFO = '/rag-info',
+  CHAT = '/chat',
   SETTINGS = '/settings',
   LOGOUT = 'logout',
   // Admin routes

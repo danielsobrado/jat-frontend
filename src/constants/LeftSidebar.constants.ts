@@ -9,7 +9,7 @@ import {
   DatabaseOutlined,
   UserOutlined,
   TeamOutlined,
-  SafetyCertificateOutlined
+  MessageOutlined
 } from '@ant-design/icons';
 import { LeftSidebarItem } from '../components/Sidebar/LeftSidebar.interface';
 import { SidebarItem as SidebarItemEnum } from '../enum/sidebar.enum'; // Use enum alias
@@ -67,34 +67,16 @@ export const SIDEBAR_ITEMS: LeftSidebarItem[] = [
     dataTestId: 'history',
     redirect_url: '/history',
   },
-  // --- New RAG Section (conditionally rendered) ---
-  // We will add the item dynamically in LeftSidebar.component.tsx
-  // based on the ragEnabled flag. Define the structure here for clarity:
-  /*
-  {
-    key: SidebarItemEnum.RAG_INFO, // Use enum value
-    title: 'Information', // Top-level item name
-    icon: DatabaseOutlined, // Or another suitable icon
-    dataTestId: 'rag-info',
-    // No redirect_url for parent if it only expands
-    children: [
-      // {
-      //   key: SidebarItemEnum.RAG_INFO_ADD, // Define enum if needed
-      //   title: 'Add Info',
-      //   icon: PlusOutlined,
-      //   dataTestId: 'rag-info-add',
-      //   redirect_url: '/rag-info/add', // Or handle via modal on list page
-      // },
-      {
-        key: SidebarItemEnum.RAG_INFO, // Link main item to the list view
-        title: 'View Info',
-        icon: UnorderedListOutlined,
-        dataTestId: 'rag-info-view',
-        redirect_url: '/rag-info', // Points to the main page
-      },
-    ],
-  },
-  */
+  // Chat Item will be inserted dynamically after History if RAG is disabled,
+  // or after RAG if RAG is enabled.
+  // Or, place it statically if RAG's position is also static.
+  // For simplicity here, let's add it statically after history.
+  // The dynamic insertion logic in LeftSidebar.component.tsx will need to account for this if RAG is also dynamic.
+  // A better approach for dynamic insertion is to define a base array and then splice items in.
+  // Given the current dynamic insertion of RAG_INFO_SIDEBAR_ITEM, it's better to let
+  // LeftSidebar.component.tsx handle the insertion of CHAT_SIDEBAR_ITEM as well if its position is conditional.
+  // For now, let's assume it's added to the base list and filtered by permission.
+  // We'll refine LeftSidebar.component.tsx to insert it intelligently relative to RAG
 ];
 
 export const RAG_INFO_SIDEBAR_ITEM: LeftSidebarItem = {
@@ -105,15 +87,15 @@ export const RAG_INFO_SIDEBAR_ITEM: LeftSidebarItem = {
     redirect_url: '/rag-info', // Link parent directly to the list view
     disableExpandIcon: true, // Keep simple for now
     requiredPermission: 'rag:view', // Add permission requirement
-    // children: [ // Keep simple: Parent links directly
-    //   {
-    //     key: SidebarItemEnum.RAG_INFO, // Link main item to the list view
-    //     title: 'View Info',
-    //     icon: UnorderedListOutlined,
-    //     dataTestId: 'rag-info-view',
-    //     redirect_url: '/rag-info', // Points to the main page
-    //   },
-    // ]
+};
+
+export const CHAT_SIDEBAR_ITEM: LeftSidebarItem = {
+    key: SidebarItemEnum.CHAT,
+    title: 'AI Chat',
+    icon: MessageOutlined, // Use the imported icon
+    dataTestId: 'chat',
+    redirect_url: '/chat',
+    requiredPermission: 'chat:use', // Example permission
 };
 
 // --- NEW Admin Section ---

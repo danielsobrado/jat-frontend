@@ -63,7 +63,10 @@ export const API_ENDPOINTS = {
     delete: '/rag-info/{id}'  // DELETE
   },
   // Add endpoint for frontend config if needed
-  frontendConfig: '/config/frontend', // GET
+  frontendConfig: '/config/frontend',
+  chat: { 
+    completions: '/chat/completions', 
+  },
 };
 
 export const formatEndpoint = (endpoint: string, params?: Record<string, string>): string => {
