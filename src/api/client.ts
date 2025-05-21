@@ -67,6 +67,23 @@ export class WebApiClient implements ApiClient {
     this.ragService = new RagService(this.core);
   }
 
+  // Add generic HTTP methods delegating to ApiClientCore
+  async get<T = any>(path: string, params?: Record<string, any>, config?: any): Promise<T> {
+    return this.core.get<T>(path, params, config);
+  }
+
+  async post<T = any>(path: string, data?: any, config?: any): Promise<T> {
+    return this.core.post<T>(path, data, config);
+  }
+
+  async put<T = any>(path: string, data?: any, config?: any): Promise<T> {
+    return this.core.put<T>(path, data, config);
+  }
+
+  async delete<T = any>(path: string, config?: any): Promise<T> {
+    return this.core.delete<T>(path, config);
+  }
+
   // Initialize method now fetches auth config
   async initialize(): Promise<void> {
     await this.core.fetchAuthConfig();

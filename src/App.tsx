@@ -16,6 +16,11 @@ import './App.css';
 import { Spin } from 'antd'; // For loading indicator
 import ChatPage from './pages/ChatPage';
 
+// Assuming these components exist in the specified path
+import LangGraphListPage from './langgraph/pages/LangGraphListPage'; 
+import LangGraphViewPage from './langgraph/pages/LangGraphViewPage';
+import LangGraphCreatePage from './langgraph/pages/LangGraphCreatePage';
+
 // --- Protected Route Component ---
 interface ProtectedRouteProps {
     isAllowed: boolean;
@@ -140,6 +145,11 @@ function App() {
               {/* Admin Routes */}
               <Route path="/admin/users" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('users:manage')}><UserManagementPage apiClient={apiClient} /></ProtectedRoute>} />
               <Route path="/admin/roles" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('roles:manage')}><RoleManagementPage apiClient={apiClient} /></ProtectedRoute>} />
+
+              {/* LangGraph Routes */}
+              <Route path="/langgraph" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('langgraph:view')}><LangGraphListPage /></ProtectedRoute>} />
+              <Route path="/langgraph/view/:graphId" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('langgraph:view')}><LangGraphViewPage /></ProtectedRoute>} />
+              <Route path="/langgraph/create" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('langgraph:create')}><LangGraphCreatePage /></ProtectedRoute>} />
 
               <Route path="*" element={<Navigate to="/test" replace />} />
         </Route>

@@ -13,7 +13,8 @@ import {
   SIDEBAR_NESTED_KEYS,
   RAG_INFO_SIDEBAR_ITEM,
   CHAT_SIDEBAR_ITEM,
-  ADMIN_SIDEBAR_ITEMS, // Import Admin items
+  ADMIN_SIDEBAR_ITEMS,
+  LANGGRAPH_VIS_SIDEBAR_ITEM, // Import LangGraph item
 } from '../../constants/LeftSidebar.constants';
 import { SidebarItem as SidebarItemEnum } from '../../enum/sidebar.enum';
 import { LeftSidebarItem as LeftSidebarItemType, LeftSidebarProps } from './LeftSidebar.interface';
@@ -68,7 +69,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
   // Map menu items with conditional RAG and Admin items
   const topMenuItems: MenuProps['items'] = useMemo(() => {
-    let items = [...BASE_SIDEBAR_ITEMS]; // Start with base items from constants
+    let items: LeftSidebarItemType[] = [...BASE_SIDEBAR_ITEMS]; // Start with base items from constants
 
     // Determine the insertion index for Chat and RAG
     const historyIndex = items.findIndex(item => item?.key === SidebarItemEnum.HISTORY);
@@ -82,10 +83,14 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
     if (ragEnabled === true) {
       console.log("RAG is enabled, adding RAG menu item");
       items.splice(insertionPoint, 0, RAG_INFO_SIDEBAR_ITEM);
-      // insertionPoint++; // Not needed if RAG is last dynamic item before admin
+      insertionPoint++; // Move insertion point for next item
     } else {
       console.log("RAG is not enabled, not adding RAG menu item");
     }
+
+    // Insert LangGraph item
+    items.splice(insertionPoint, 0, LANGGRAPH_VIS_SIDEBAR_ITEM);
+    // insertionPoint++; // Not needed if LangGraph is the last dynamic item before admin items
 
     // Add Admin items (conditionally displayed based on permissions in the filter below)
     items = [...items, ...ADMIN_SIDEBAR_ITEMS];

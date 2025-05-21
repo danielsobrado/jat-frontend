@@ -1,6 +1,12 @@
 // src/api/types.ts
 // API Client Interface
 export interface ApiClient {
+  // Generic HTTP methods
+  get<T = any>(path: string, params?: Record<string, any>, config?: any): Promise<T>;
+  post<T = any>(path: string, data?: any, config?: any): Promise<T>;
+  put<T = any>(path: string, data?: any, config?: any): Promise<T>;
+  delete<T = any>(path: string, config?: any): Promise<T>;
+
   // Authentication methods
   /**
    * Check if user is currently logged in
@@ -254,6 +260,12 @@ export interface ApiClient {
    * @param question - The query string
    */
    queryRag(question: string): Promise<any>; // Define 'any' for now, can be more specific if response structure is known
+
+  // Generic HTTP methods that should be implemented by the concrete ApiClient
+  // get<T>(url: string, config?: any): Promise<T>;
+  // post<T>(url: string, data?: any, config?: any): Promise<T>;
+  // put<T>(url: string, data?: any, config?: any): Promise<T>;
+  // delete<T>(url: string, config?: any): Promise<T>;
 }
 
 // --- RAG Information Types ---

@@ -2,11 +2,10 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // Base configuration for API endpoints
 export const API_CONFIG = {
-  baseUrl: isProd ? '/api' : 'http://localhost:8081',
+  baseUrl: '/api', // Use relative URL in all environments to leverage Vite's proxy
   version: 'v1',
   getFullBaseUrl: () => {
-    const base = isProd ? '/api' : 'http://localhost:8081';
-    return `${base}/v1`;
+    return `/v1`; // Use relative URL to leverage Vite's proxy
   }
 };
 
