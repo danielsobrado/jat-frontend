@@ -218,24 +218,22 @@ import { ApiClient } from '../../api/types';
 
 // --- LangGraphApiService Class ---
 export class LangGraphApiService {
-  private apiClient: ApiClient;  private prefix: string;
+  private apiClient: ApiClient;
+  private prefix: string;
 
   constructor(apiClient: ApiClient, prefix: string = '/v1/lg-vis') {
     this.apiClient = apiClient;
     this.prefix = prefix;
     console.log(`[LangGraphApiService] Initialized with prefix: ${this.prefix}`);
   }
+
   // Custom method to get data that bypasses formatEndpoint
   private async directGet<T = any>(path: string, params?: Record<string, any>): Promise<T> {
-    // Ensure path is correct and doesn't duplicate the prefix
-    let fullPath = path;
+    // Ensure path is correct by removing any duplicate slashes between prefix and path
+    const basePath = path.startsWith('/') ? path : `/${path}`;
     
-    // If path already starts with the prefix, don't add it again
-    if (!path.startsWith(this.prefix)) {
-      fullPath = `${this.prefix}${path.startsWith('/') ? path : `/${path}`}`;
-    }
-      // Add query parameters to the URL
-    let urlString = fullPath;
+    // Add query parameters to the URL
+    let urlString = basePath;
     if (params && Object.keys(params).length > 0) {
       const queryParams = new URLSearchParams();
       Object.keys(params).forEach(key => {
@@ -244,42 +242,44 @@ export class LangGraphApiService {
         }
       });
       const queryString = queryParams.toString();
-      urlString = queryString ? `${fullPath}${fullPath.includes('?') ? '&' : '?'}${queryString}` : fullPath;
+      urlString = queryString ? `${basePath}${basePath.includes('?') ? '&' : '?'}${queryString}` : basePath;
     }
+    
     console.log(`[LangGraphApiService] Making direct request to: ${urlString}`);
-    try {
-      const response = await this.apiClient.get(urlString);
-      return response;
-    } catch (error) {
-      console.error(`[LangGraphApiService] Error making GET request to: ${urlString}`, error);
-      throw error;
+    const response = await fetch(urlString, { method: 'GET' });
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, path: ${urlString}, details: ${errorData}`);
     }
+    return response.json() as Promise<T>;
   }
+
   async listGraphDefinitions(includeStatic: boolean = false): Promise<GraphDefinitionListResponseFE> {
     console.log(`[LangGraphApiService] Listing graph definitions with prefix: ${this.prefix}`);
-    // Use "/graphs" instead of "${this.prefix}/graphs" - the prefix will be added in directGet
-    return this.directGet<GraphDefinitionListResponseFE>(`/graphs`, { include_static: includeStatic });
-  }  async getGraphDefinition(graphId: string): Promise<FrontendGraphDef> {
-    return this.directGet<FrontendGraphDef>(`/graphs/${graphId}`);
+    return this.directGet<GraphDefinitionListResponseFE>(`${this.prefix}/graphs`, { include_static: includeStatic });
   }
-    // Custom method to post data that bypasses formatEndpoint
+
+  async getGraphDefinition(graphId: string): Promise<FrontendGraphDef> {
+    return this.directGet<FrontendGraphDef>(`${this.prefix}/graphs/${graphId}`);
+  }
+
+  // Custom method to post data that bypasses formatEndpoint
   private async directPost<T = any>(path: string, body: any): Promise<T> {
-    // Ensure path is correct and doesn't duplicate the prefix
-    let fullPath = path;
-    
-    // If path already starts with the prefix, don't add it again
-    if (!path.startsWith(this.prefix)) {
-      fullPath = `${this.prefix}${path.startsWith('/') ? path : `/${path}`}`;
-    }
-    
+    // Ensure path is correct by removing any duplicate slashes between prefix and path
+    const fullPath = path.startsWith('/') ? path : `/${path}`;
     console.log(`[LangGraphApiService] Making direct POST request to: ${fullPath}`);
-    try {
-      const response = await this.apiClient.post(fullPath, body);
-      return response;
-    } catch (error) {
-      console.error(`[LangGraphApiService] Error making POST request to: ${fullPath}`, error);
-      throw error;
+    const response = await fetch(fullPath, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, path: ${fullPath}, details: ${errorData}`);
     }
+    return response.json() as Promise<T>;
   }
 
   async createGraphDefinition(data: CreateGraphRequestFE): Promise<FrontendGraphDef> {
@@ -310,29 +310,33 @@ export class LangGraphApiService {
         mappings: condEdge.mappings.map(mapping => ({
           condition_name: mapping.conditionName,
           target_node_id: mapping.targetNodeId
-        }))      })),      terminal_node_ids: data.terminalNodeIds
+        }))
+      })),
+      terminal_node_ids: data.terminalNodeIds
     };
 
-    return this.directPost<FrontendGraphDef>(`/graphs`, transformedData);
-  }  // Custom method to put data that bypasses formatEndpoint
-  private async directPut<T = any>(path: string, body: any): Promise<T> {
-    // Ensure path is correct and doesn't duplicate the prefix
-    let fullPath = path;
-    
-    // If path already starts with the prefix, don't add it again
-    if (!path.startsWith(this.prefix)) {
-      fullPath = `${this.prefix}${path.startsWith('/') ? path : `/${path}`}`;
-    }
-    
-    console.log(`[LangGraphApiService] Making direct PUT request to: ${fullPath}`);
-    try {
-      const response = await this.apiClient.put(fullPath, body);
-      return response;
-    } catch (error) {
-      console.error(`[LangGraphApiService] Error making PUT request to: ${fullPath}`, error);
-      throw error;
-    }
+    return this.directPost<FrontendGraphDef>(`${this.prefix}/graphs`, transformedData);
   }
+
+  // Custom method to put data that bypasses formatEndpoint
+  private async directPut<T = any>(path: string, body: any): Promise<T> {
+    // Ensure path is correct by removing any duplicate slashes between prefix and path
+    const fullPath = path.startsWith('/') ? path : `/${path}`;
+    console.log(`[LangGraphApiService] Making direct PUT request to: ${fullPath}`);
+    const response = await fetch(fullPath, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, path: ${fullPath}, details: ${errorData}`);
+    }
+    return response.json() as Promise<T>;
+  }
+
   async updateGraphDefinition(graphId: string, data: UpdateGraphRequestFE): Promise<FrontendGraphDef> {
     // Convert camelCase keys to snake_case for Python backend
     const transformedData = {
@@ -362,33 +366,37 @@ export class LangGraphApiService {
           condition_name: mapping.conditionName,
           target_node_id: mapping.targetNodeId
         }))
-      })),      terminal_node_ids: data.terminalNodeIds
-    };    return this.directPut<FrontendGraphDef>(`/graphs/${graphId}`, transformedData);
+      })),
+      terminal_node_ids: data.terminalNodeIds
+    };
+
+    return this.directPut<FrontendGraphDef>(`${this.prefix}/graphs/${graphId}`, transformedData);
   }
-    // Custom method to delete data that bypasses formatEndpoint
+
+  // Custom method to delete data that bypasses formatEndpoint
   private async directDelete<T = any>(path: string): Promise<T> {
-    // Ensure path is correct and doesn't duplicate the prefix
-    let fullPath = path;
-    
-    // If path already starts with the prefix, don't add it again
-    if (!path.startsWith(this.prefix)) {
-      fullPath = `${this.prefix}${path.startsWith('/') ? path : `/${path}`}`;
-    }
-    
+    // Ensure path is correct by removing any duplicate slashes between prefix and path
+    const fullPath = path.startsWith('/') ? path : `/${path}`;
     console.log(`[LangGraphApiService] Making direct DELETE request to: ${fullPath}`);
-    try {
-      const response = await this.apiClient.delete(fullPath);
-      return response;
-    } catch (error) {
-      console.error(`[LangGraphApiService] Error making DELETE request to: ${fullPath}`, error);
-      throw error;
+    const response = await fetch(fullPath, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, path: ${fullPath}, details: ${errorData}`);
     }
+    return response.json() as Promise<T>;
   }
+
   async deleteGraphDefinition(graphId: string): Promise<MessageResponseFE> {
-    return this.directDelete<MessageResponseFE>(`/graphs/${graphId}`);
+    return this.directDelete<MessageResponseFE>(`${this.prefix}/graphs/${graphId}`);
   }
+
   // Placeholder for HTTP execution if needed, otherwise remove
   async executeGraph(graphId: string, request: ExecuteGraphRequestFE): Promise<ExecuteGraphResponseFE> {
-    return this.directPost<ExecuteGraphResponseFE>(`/graphs/${graphId}/execute`, request);
+    return this.directPost<ExecuteGraphResponseFE>(`${this.prefix}/graphs/${graphId}/execute`, request);
   }
 }
