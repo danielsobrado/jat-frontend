@@ -1,3 +1,6 @@
+// src/langgraph/services/langGraphApiService.ts
+// Content from the original langGraphApiService.fixed.ts
+
 /**
  * Represents the UI position of a node for visualization.
  * Mirrors backend: NodeUIPosition
@@ -16,8 +19,6 @@ export interface FrontendNodeDef {
   type: string; // Maps to backend logic (e.g., 'llm_node', 'tool_node')
   config: Record<string, any>; // Configuration specific to this node type
   uiPosition?: UINodePosition; // Optional UI positioning
-  // Frontend-specific display properties can be added here if needed
-  // e.g., customData?: { label?: string; icon?: string; status?: 'running' | 'completed' | 'error' };
 }
 
 /**
@@ -30,7 +31,6 @@ export interface FrontendEdgeDef {
   target: string; // ID of the target node
   label?: string; // Optional label for the edge
   animated?: boolean;
-  // type?: string; // For custom React Flow edge rendering
 }
 
 /**
@@ -48,7 +48,6 @@ export interface FrontendConditionalEdgeMapping {
  */
 export interface FrontendConditionalEdgesDef {
   sourceNodeId: string;
-  // routerFunctionName?: string; // Name of the router function in backend's ROUTER_IMPLEMENTATIONS
   mappings: FrontendConditionalEdgeMapping[];
 }
 
@@ -60,15 +59,15 @@ export interface FrontendGraphDef {
   id: string;
   name: string;
   description?: string;
-  stateSchemaName: string; // Name of the Pydantic model for LangGraph state
+  stateSchemaName: string; 
   nodes: FrontendNodeDef[];
   edges: FrontendEdgeDef[];
   conditionalEdges: FrontendConditionalEdgesDef[];
   entryPointNodeId: string;
   terminalNodeIds?: string[];
   version?: number;
-  createdAt?: string; // ISO date string
-  updatedAt?: string; // ISO date string
+  createdAt?: string; 
+  updatedAt?: string; 
 }
 
 /**
@@ -78,7 +77,7 @@ export interface FrontendGraphDef {
 export interface GraphDefinitionIdentifierFE {
   id: string;
   name: string;
-  updatedAt?: string; // ISO date string
+  updatedAt?: string; 
 }
 
 /**
@@ -93,34 +92,27 @@ export interface GraphDefinitionListResponseFE {
  * Request payload for creating a new graph definition.
  * Mirrors backend: CreateGraphRequest
  */
-export interface CreateGraphRequestFE extends Omit<FrontendGraphDef, 'id' | 'createdAt' | 'updatedAt' | 'version'> {
-  // id, createdAt, updatedAt, version are typically server-generated
-}
+export interface CreateGraphRequestFE extends Omit<FrontendGraphDef, 'id' | 'createdAt' | 'updatedAt' | 'version'> {}
 
 /**
  * Request payload for updating an existing graph definition.
  * Mirrors backend: UpdateGraphRequest
  */
-export interface UpdateGraphRequestFE extends CreateGraphRequestFE {
-  // Inherits all fields from CreateGraphRequestFE.
-  // The ID of the graph to update is usually passed as a path parameter.
-}
-
+export interface UpdateGraphRequestFE extends CreateGraphRequestFE {}
 
 // --- WebSocket Event Types (mirroring backend schemas) ---
-
 export type WebSocketEventType =
   | 'graph_execution_start'
   | 'node_start'
   | 'node_end'
-  | 'edge_taken' // You might need to infer this or have backend send it explicitly
+  | 'edge_taken'
   | 'graph_execution_end'
   | 'graph_error'
-  | 'pong'; // For keep-alive if implemented
+  | 'pong';
 
 export interface WebSocketBaseEventFE {
   eventType: WebSocketEventType;
-  timestamp: string; // ISO date string
+  timestamp: string; 
   executionId: string;
   graphId: string;
 }
@@ -175,7 +167,6 @@ export interface PongEventFE extends Omit<WebSocketBaseEventFE, 'executionId' | 
     serverTime: string;
 }
 
-// Union type for all possible incoming WebSocket messages
 export type LangGraphExecutionEvent =
   | GraphExecutionStartEventFE
   | NodeStartEventFE
@@ -186,214 +177,167 @@ export type LangGraphExecutionEvent =
   | PongEventFE;
 
 // --- HTTP API Request/Response Types for LangGraph Management ---
-
-/**
- * Request to initiate execution of a graph via HTTP (if implemented).
- * Mirrors backend: ExecuteGraphRequest
- */
 export interface ExecuteGraphRequestFE {
   inputArgs?: Record<string, any>;
-  // configOverrides?: Record<string, any>;
 }
 
-/**
- * Response after initiating a graph execution via HTTP.
- * Mirrors backend: ExecuteGraphResponse
- */
 export interface ExecuteGraphResponseFE {
   executionId: string;
   message: string;
-  // statusUrl?: string; // URL to poll for status if not using WebSockets
 }
 
-/**
- * Generic message response from the API.
- */
 export interface MessageResponseFE {
   message: string;
   details?: any;
 }
 
-import { ApiClient } from '../../api/types';
+import { ApiClient } from '../../api/types'; // ApiClient is used for type hint, but not for its methods in direct*
 
 // --- LangGraphApiService Class ---
 export class LangGraphApiService {
-  private apiClient: ApiClient;
-  private basePath: string;
+  private apiClient: ApiClient; // Retained for type consistency or potential future use
+  private prefix: string;
 
-  constructor(apiClient: ApiClient, basePath: string = '/v1/lg-vis') {
+  constructor(apiClient: ApiClient, prefix: string = '/v1/lg-vis') {
     this.apiClient = apiClient;
-    // Ensure basePath starts with a slash but doesn't end with one
-    this.basePath = basePath.startsWith('/') ? basePath : `/${basePath}`;
-    if (this.basePath.endsWith('/')) {
-      this.basePath = this.basePath.slice(0, -1);
-    }
-    console.log(`[LangGraphApiService] Initialized with basePath: ${this.basePath}`);
+    this.prefix = prefix;
+    console.log(`[LangGraphApiService] Initialized with prefix: ${this.prefix}`);
   }
 
-  /**
-   * Builds a URL combining the base path with the provided endpoint.
-   * Ensures no duplicate slashes between segments.
-   * 
-   * @param endpoint The API endpoint without the base path
-   * @returns The full URL path including the base path
-   */
-  private buildUrl(endpoint: string): string {
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-    return `${this.basePath}/${cleanEndpoint}`;
-  }
-
-  /**
-   * Makes a GET request to the API.
-   */
-  private async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<T> {
-    const url = this.buildUrl(endpoint);
+  private async directGet<T = any>(path: string, params?: Record<string, any>): Promise<T> {
+    // Path is already the full path like "/v1/lg-vis/graphs"
+    // Ensure it starts with a single '/'
+    const fullPath = path.startsWith('/') ? path : `/${path}`;
     
-    console.log(`[LangGraphApiService] Making GET request to: ${url}`, params);
-    try {
-      const response = await this.apiClient.get(url, params);
-      return response;
-    } catch (error) {
-      console.error(`[LangGraphApiService] Error making GET request to: ${url}`, error);
-      throw error;
+    let urlString = fullPath;
+    if (params && Object.keys(params).length > 0) {
+      const queryParams = new URLSearchParams();
+      Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null) {
+          queryParams.append(key, String(params[key]));
+        }
+      });
+      const queryString = queryParams.toString();
+      if (queryString) {
+        urlString = `${fullPath}?${queryString}`;
+      }
     }
-  }
-
-  /**
-   * Makes a POST request to the API.
-   */
-  private async post<T = any>(endpoint: string, data: any): Promise<T> {
-    const url = this.buildUrl(endpoint);
     
-    console.log(`[LangGraphApiService] Making POST request to: ${url}`);
-    try {
-      const response = await this.apiClient.post(url, data);
-      return response;
-    } catch (error) {
-      console.error(`[LangGraphApiService] Error making POST request to: ${url}`, error);
-      throw error;
+    console.log(`[LangGraphApiService] Making direct GET request to: ${urlString}`);
+    const response = await fetch(urlString, { method: 'GET' }); // Direct fetch
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, path: ${urlString}, details: ${errorData}`);
     }
+    return response.json() as Promise<T>;
   }
-
-  /**
-   * Makes a PUT request to the API.
-   */
-  private async put<T = any>(endpoint: string, data: any): Promise<T> {
-    const url = this.buildUrl(endpoint);
-    
-    console.log(`[LangGraphApiService] Making PUT request to: ${url}`);
-    try {
-      const response = await this.apiClient.put(url, data);
-      return response;
-    } catch (error) {
-      console.error(`[LangGraphApiService] Error making PUT request to: ${url}`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Makes a DELETE request to the API.
-   */
-  private async delete<T = any>(endpoint: string): Promise<T> {
-    const url = this.buildUrl(endpoint);
-    
-    console.log(`[LangGraphApiService] Making DELETE request to: ${url}`);
-    try {
-      const response = await this.apiClient.delete(url);
-      return response;
-    } catch (error) {
-      console.error(`[LangGraphApiService] Error making DELETE request to: ${url}`, error);
-      throw error;
-    }
-  }
-  // Public API methods that use the utility methods above
 
   async listGraphDefinitions(includeStatic: boolean = false): Promise<GraphDefinitionListResponseFE> {
-    return this.get<GraphDefinitionListResponseFE>('graphs', { include_static: includeStatic });
+    console.log(`[LangGraphApiService] Listing graph definitions. Prefix: ${this.prefix}. Path for directGet: ${this.prefix}/graphs`);
+    return this.directGet<GraphDefinitionListResponseFE>(`${this.prefix}/graphs`, { include_static: includeStatic });
   }
 
   async getGraphDefinition(graphId: string): Promise<FrontendGraphDef> {
-    return this.get<FrontendGraphDef>(`graphs/${graphId}`);
+    return this.directGet<FrontendGraphDef>(`${this.prefix}/graphs/${graphId}`);
+  }
+
+  private async directPost<T = any>(path: string, body: any): Promise<T> {
+    const fullPath = path.startsWith('/') ? path : `/${path}`;
+    console.log(`[LangGraphApiService] Making direct POST request to: ${fullPath}`);
+    const response = await fetch(fullPath, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, path: ${fullPath}, details: ${errorData}`);
+    }
+    return response.json() as Promise<T>;
   }
 
   async createGraphDefinition(data: CreateGraphRequestFE): Promise<FrontendGraphDef> {
-    // Convert camelCase keys to snake_case for Python backend
     const transformedData = {
       name: data.name,
       description: data.description,
       state_schema_name: data.stateSchemaName,
       entry_point_node_id: data.entryPointNodeId,
       nodes: data.nodes.map(node => ({
-        id: node.id,
-        type: node.type,
-        config: node.config,
-        ui_position: node.uiPosition ? {
-          x: node.uiPosition.x,
-          y: node.uiPosition.y
-        } : undefined
+        id: node.id, type: node.type, config: node.config,
+        ui_position: node.uiPosition ? { x: node.uiPosition.x, y: node.uiPosition.y } : undefined
       })),
       edges: data.edges.map(edge => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        label: edge.label,
-        animated: edge.animated
+        id: edge.id, source: edge.source, target: edge.target, label: edge.label, animated: edge.animated
       })),
       conditional_edges: data.conditionalEdges.map(condEdge => ({
         source_node_id: condEdge.sourceNodeId,
         mappings: condEdge.mappings.map(mapping => ({
-          condition_name: mapping.conditionName,
-          target_node_id: mapping.targetNodeId
+          condition_name: mapping.conditionName, target_node_id: mapping.targetNodeId
         }))
       })),
       terminal_node_ids: data.terminalNodeIds
     };
+    return this.directPost<FrontendGraphDef>(`${this.prefix}/graphs`, transformedData);
+  }
 
-    return this.post<FrontendGraphDef>('graphs', transformedData);
+  private async directPut<T = any>(path: string, body: any): Promise<T> {
+    const fullPath = path.startsWith('/') ? path : `/${path}`;
+    console.log(`[LangGraphApiService] Making direct PUT request to: ${fullPath}`);
+    const response = await fetch(fullPath, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, path: ${fullPath}, details: ${errorData}`);
+    }
+    return response.json() as Promise<T>;
   }
 
   async updateGraphDefinition(graphId: string, data: UpdateGraphRequestFE): Promise<FrontendGraphDef> {
-    // Convert camelCase keys to snake_case for Python backend
     const transformedData = {
       name: data.name,
       description: data.description,
       state_schema_name: data.stateSchemaName,
       entry_point_node_id: data.entryPointNodeId,
       nodes: data.nodes.map(node => ({
-        id: node.id,
-        type: node.type,
-        config: node.config,
-        ui_position: node.uiPosition ? {
-          x: node.uiPosition.x,
-          y: node.uiPosition.y
-        } : undefined
+        id: node.id, type: node.type, config: node.config,
+        ui_position: node.uiPosition ? { x: node.uiPosition.x, y: node.uiPosition.y } : undefined
       })),
       edges: data.edges.map(edge => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        label: edge.label,
-        animated: edge.animated
+        id: edge.id, source: edge.source, target: edge.target, label: edge.label, animated: edge.animated
       })),
       conditional_edges: data.conditionalEdges.map(condEdge => ({
         source_node_id: condEdge.sourceNodeId,
         mappings: condEdge.mappings.map(mapping => ({
-          condition_name: mapping.conditionName,
-          target_node_id: mapping.targetNodeId
+          condition_name: mapping.conditionName, target_node_id: mapping.targetNodeId
         }))
       })),
       terminal_node_ids: data.terminalNodeIds
     };
-    
-    return this.put<FrontendGraphDef>(`graphs/${graphId}`, transformedData);
+    return this.directPut<FrontendGraphDef>(`${this.prefix}/graphs/${graphId}`, transformedData);
+  }
+
+  private async directDelete<T = any>(path: string): Promise<T> {
+    const fullPath = path.startsWith('/') ? path : `/${path}`;
+    console.log(`[LangGraphApiService] Making direct DELETE request to: ${fullPath}`);
+    const response = await fetch(fullPath, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, path: ${fullPath}, details: ${errorData}`);
+    }
+    return response.json() as Promise<T>;
   }
 
   async deleteGraphDefinition(graphId: string): Promise<MessageResponseFE> {
-    return this.delete<MessageResponseFE>(`graphs/${graphId}`);
+    return this.directDelete<MessageResponseFE>(`${this.prefix}/graphs/${graphId}`);
   }
 
-  // Placeholder for HTTP execution if needed, otherwise remove
   async executeGraph(graphId: string, request: ExecuteGraphRequestFE): Promise<ExecuteGraphResponseFE> {
-    return this.post<ExecuteGraphResponseFE>(`graphs/${graphId}/execute`, request);
+    return this.directPost<ExecuteGraphResponseFE>(`${this.prefix}/graphs/${graphId}/execute`, request);
   }
 }
