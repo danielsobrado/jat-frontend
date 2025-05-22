@@ -274,8 +274,7 @@ const LangGraphViewPageContent: React.FC = () => {
               addonAfter="ms"
             />
           </Col>
-        </Row>
-          <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        </Row>          <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
             {executionStatus !== 'running' && executionStatus !== 'starting' ? (
               <Tooltip title="Start graph execution">
                 <Button
@@ -286,8 +285,8 @@ const LangGraphViewPageContent: React.FC = () => {
                     e.preventDefault();
                     handleExecuteGraph();
                   }}
-                  loading={executionStatus === 'connecting'}
-                  disabled={!checkPermission('langgraph:execute')}
+                  loading={executionStatus === 'connecting' || executionStatus === 'starting'}
+                  disabled={!checkPermission('langgraph:execute') || executionStatus === 'running' || executionStatus === 'starting' || executionStatus === 'connecting'}
                 >
                   Execute
                 </Button>
@@ -303,6 +302,7 @@ const LangGraphViewPageContent: React.FC = () => {
                     e.preventDefault();
                     handleStopExecution();
                   }}
+                  disabled={!(executionStatus === 'running' || executionStatus === 'starting')}
                 >
                   Stop
                 </Button>

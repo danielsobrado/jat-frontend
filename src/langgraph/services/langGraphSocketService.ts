@@ -46,9 +46,7 @@ export class LangGraphSocketService {
     this.onErrorCallback = options.onError;
     this.onCloseCallback = options.onClose;
     this.autoReconnect = options.autoReconnect !== undefined ? options.autoReconnect : true;
-    this.explicitlyClosed = false; // Initialize here
-
-    // Determine base WebSocket URL
+    this.explicitlyClosed = false; // Initialize here  // Determine base WebSocket URL
     if (options.baseWsUrl) {
         this.baseWsUrl = options.baseWsUrl;
     } else {
@@ -56,25 +54,30 @@ export class LangGraphSocketService {
         const httpBase = API_CONFIG.baseUrl.startsWith('http')
             ? API_CONFIG.baseUrl
             : `${window.location.protocol}//${window.location.host}${API_CONFIG.baseUrl}`; // Handle relative base URL
-        const wsProtocol = httpBase.startsWith('https') ? 'wss:' : 'ws:';
-        const url = new URL(httpBase);
-        this.baseWsUrl = `${wsProtocol}//${url.host}`; // Use only protocol and host, paths will be added
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        this.baseWsUrl = `${wsProtocol}//${window.location.host}`; // Use current host
     }
     console.log('[LangGraphSocketService] Base WebSocket URL set to:', this.baseWsUrl);
-  }
-  private getWebSocketUrl(): string {
+  }  private getWebSocketUrl(): string {
     if (!this.graphId) {
       throw new Error('Graph ID is not set for WebSocket connection.');
     }
-    // Path should match the backend WebSocket router configuration
-    // Path for LangGraph WebSockets (e.g., /v1/lg-vis/ws/...)
-    // We will construct this path directly without API_CONFIG.baseUrl for WS
-    const wsPathPrefix = "/api/v1/lg-vis/ws/langgraph/graphs"; // Ensure this matches the Vite proxy source path and backend structure
+    
+    // Path should match the backend WebSocket router configuration AND Vite proxy configuration
+    // From vite.config.ts: '/api/v1/lg-vis/ws' gets rewritten to '/v1/lg-vis/ws' for the backend
+    const wsPathPrefix = "/api/v1/lg-vis/ws/langgraph/graphs";
+    
+    console.log('[LangGraphSocketService] Creating WebSocket URL with baseWsUrl:', this.baseWsUrl);
 
+    let fullUrl: string;
     if (this.executionId) {
-      return `${this.baseWsUrl}${wsPathPrefix}/${this.graphId}/execute/${this.executionId}`;
+      fullUrl = `${this.baseWsUrl}${wsPathPrefix}/${this.graphId}/execute/${this.executionId}`;
+    } else {
+      fullUrl = `${this.baseWsUrl}${wsPathPrefix}/${this.graphId}/execute`;
     }
-    return `${this.baseWsUrl}${wsPathPrefix}/${this.graphId}/execute`;
+    
+    console.log('[LangGraphSocketService] WebSocket URL:', fullUrl);
+    return fullUrl;
   }
 
   public connect(graphId: string, executionId?: string): void {

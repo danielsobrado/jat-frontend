@@ -12,14 +12,14 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'; // Ensure styles are imported
 
 import { ReactFlowNodeData, ReactFlowEdgeData } from '../types/langgraph';
-// import CustomGraphNode from './CustomGraphNode'; // Placeholder for custom node
+import CustomGraphNode from './CustomGraphNode'; // Custom node component
 // import CustomGraphEdge from './CustomGraphEdge'; // Placeholder for custom edge
 
 // --- Optional: Define Custom Node and Edge Types for React Flow ---
-// const nodeTypes = {
-//   customGraphNode: CustomGraphNode, // Maps 'customGraphNode' type from adapter to this component
-//   // You can add more types: 'llmNodeType': LlmNodeComponent, 'toolNodeType': ToolNodeComponent etc.
-// };
+const nodeTypes = {
+  customGraphNode: CustomGraphNode, // Maps 'customGraphNode' type from adapter to this component
+  // You can add more types: 'llmNodeType': LlmNodeComponent, 'toolNodeType': ToolNodeComponent etc.
+};
 
 // const edgeTypes = {
 //   customGraphEdge: CustomGraphEdge, // Maps 'customGraphEdge' type from adapter
@@ -41,9 +41,8 @@ const LangGraphCanvas: React.FC<LangGraphCanvasProps> = ({
   onNodeClick,
   onEdgeClick,
   isLoading = false,
-}) => {
-  // Memoize node and edge types if they were defined
-  // const memoizedNodeTypes = useMemo(() => nodeTypes, []);
+}) => {  // Memoize node and edge types if they were defined
+  const memoizedNodeTypes = useMemo(() => nodeTypes, []);
   // const memoizedEdgeTypes = useMemo(() => edgeTypes, []);
 
   if (isLoading) {
@@ -59,11 +58,10 @@ const LangGraphCanvas: React.FC<LangGraphCanvasProps> = ({
     // React Flow hooks like useNodesState, useEdgesState, useReactFlow within this component
     // or its children, though for a display-only canvas it might not be strictly necessary
     // if nodes/edges are fully managed by the parent hook.
-    <ReactFlowProvider>
-      <ReactFlow
+    <ReactFlowProvider>      <ReactFlow
         nodes={nodes}
         edges={edges}
-        // nodeTypes={memoizedNodeTypes} // Uncomment if using custom nodes
+        nodeTypes={memoizedNodeTypes} // Custom nodes
         // edgeTypes={memoizedEdgeTypes} // Uncomment if using custom edges
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}

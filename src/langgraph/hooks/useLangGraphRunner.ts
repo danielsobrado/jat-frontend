@@ -75,6 +75,14 @@ export const useLangGraphRunner = (
     };
   }, []);
 
+  // Helper to set status with logging
+  const setStatusWithLog = useCallback((newStatus: GraphExecutionStatus) => {
+    if (mountedRef.current) {
+      console.log(`[useLangGraphRunner] Status changing from ${status} to ${newStatus}`);
+      setStatus(newStatus);
+    }
+  }, [status]);
+
   const resetExecutionVisualState = useCallback(() => {
     if (mountedRef.current) {
       setCurrentGraphState(initialExecutionState);
@@ -85,6 +93,7 @@ export const useLangGraphRunner = (
   const handleNewEvent = useCallback((event: LangGraphExecutionEvent) => {
     if (!mountedRef.current) return;
 
+    console.log(`[useLangGraphRunner] Received event: ${event.eventType}`, event);
     setExecutionEvents((prevEvents) => [...prevEvents, event]);
     setCurrentGraphState((prevState) => {
       const newState = {
@@ -98,7 +107,7 @@ export const useLangGraphRunner = (
 
       switch (event.eventType) {
         case 'graph_execution_start':
-          setStatus('starting');
+          setStatusWithLog('starting');
           setCurrentExecutionId(event.executionId);
           // Reset visual state for a new run, even if it's the same graphId
           return initialExecutionState;
@@ -108,7 +117,7 @@ export const useLangGraphRunner = (
           newState.completedNodeIds.delete(nsEvent.nodeId); // In case of retries/loops
           newState.errorNodeIds.delete(nsEvent.nodeId);
           newState.lastInputByNode[nsEvent.nodeId] = nsEvent.inputData;
-          if (status !== 'running') setStatus('running');
+          if (status !== 'running') setStatusWithLog('running');
           break;
         case 'node_end':
           const neEvent = event as NodeEndEventFE;
@@ -128,12 +137,12 @@ export const useLangGraphRunner = (
           newState.traversedEdgeIds.add(edgeId);
           break;
         case 'graph_execution_end':
-          setStatus('completed');
+          setStatusWithLog('completed');
           // Keep active/completed nodes as they are for final state view
           break;
         case 'graph_error':
           setGraphError(event as GraphErrorEventFE);
-          setStatus('error');
+          setStatusWithLog('error');
           break;
         case 'pong':
           // console.debug('[useLangGraphRunner] Pong received:', event.serverTime);
@@ -141,37 +150,50 @@ export const useLangGraphRunner = (
       }
       return newState;
     });
-  }, [status]); // status dependency to ensure setStatus('running') is correctly timed
+  }, [status, setStatusWithLog]); // status dependency to ensure setStatus('running') is correctly timed
 
   const handleSocketOpen = useCallback(() => {
     if (mountedRef.current) {
-      setStatus('connected'); // Connected, now ready to send initial message
+      setStatusWithLog('connected'); // Connected, now ready to send initial message
       setError(null);
     }
-  }, []);
+  }, [setStatusWithLog]);
 
   const handleSocketError = useCallback((err: Event) => {
     if (mountedRef.current) {
       console.error('[useLangGraphRunner] WebSocket Error:', err);
       setError('WebSocket connection error. Please try again.');
-      setStatus('error');
-      resetExecutionVisualState();
+      setStatusWithLog('error');
+      // Don't reset visual state on error - let user see last state
     }
-  }, [resetExecutionVisualState]);
+  }, [setStatusWithLog]);
 
   const handleSocketClose = useCallback((ev: CloseEvent) => {
     if (mountedRef.current) {
-      console.log('[useLangGraphRunner] WebSocket Closed:', ev.code, ev.reason);
-      if (status !== 'completed' && status !== 'error' && !ev.wasClean) {
-        setError(`WebSocket closed unexpectedly: ${ev.reason || ev.code}`);
-        setStatus('error'); // Or 'disconnected' if appropriate
+      console.log('[useLangGraphRunner] WebSocket Closed:', ev.code, ev.reason, "Current status:", status);
+      
+      // Handle various closing scenarios based on current status
+      if (status === 'connecting' || status === 'connected') {
+        // Connection was lost before graph execution started
+        setError(`WebSocket closed before execution started: ${ev.reason || ev.code}`);
+        setStatusWithLog('error');
+      } else if (status === 'starting' && !ev.wasClean) {
+        // Connection was lost during graph startup
+        setError(`WebSocket closed during graph startup: ${ev.reason || ev.code}`);
+        setStatusWithLog('error');
+      } else if (status === 'running' && !ev.wasClean) {
+        // Connection was lost during graph execution
+        setError(`WebSocket closed during graph execution: ${ev.reason || ev.code}`);
+        setStatusWithLog('error');
       } else if (ev.wasClean && status !== 'completed' && status !== 'error') {
-        setStatus('closed');
+        // Normal closure but not in a final state
+        setStatusWithLog('closed');
       }
-      // Do not reset currentExecutionId or events here, they might be needed for display
+      // Don't reset currentExecutionId or events here, they might be needed for display
       // Visual state (activeNodeIds etc.) is also kept for inspection of last state.
     }
-  }, [status]);
+  }, [status, setStatusWithLog]);
+
   const connectAndExecute = useCallback((
     graphId: string,
     executionRequest: ExecuteGraphRequestFE, // New: this object contains inputArgs and simulation_delay_ms
@@ -185,7 +207,7 @@ export const useLangGraphRunner = (
     if (mountedRef.current) {
       setExecutionEvents([]); // Clear events from previous run
       resetExecutionVisualState();
-      setStatus('connecting');
+      setStatusWithLog('connecting');
       setError(null);
       setGraphError(null);
       setCurrentExecutionId(predefinedExecutionId || null); // Set if provided, else it's set on GraphExecutionStartEvent
@@ -194,7 +216,8 @@ export const useLangGraphRunner = (
     const newSocketService = new LangGraphSocketService({
       onMessage: handleNewEvent,
       onOpen: () => {
-        handleSocketOpen(); // Sets status to 'connected'        // Send initial message to start execution AFTER connection is open
+        handleSocketOpen(); // Sets status to 'connected'
+        // Send initial message to start execution AFTER connection is open
         console.log('[useLangGraphRunner] Sending initial execution request:', executionRequest);
         newSocketService.send(executionRequest); // << MODIFIED: Send the whole object
       },
@@ -211,20 +234,19 @@ export const useLangGraphRunner = (
       // If component unmounted before socket could be set, close the new socket
       newSocketService.close();
     }
-  }, [socketService, handleNewEvent, handleSocketOpen, handleSocketError, handleSocketClose, resetExecutionVisualState, baseWsUrl]);
-
+  }, [socketService, handleNewEvent, handleSocketOpen, handleSocketError, handleSocketClose, resetExecutionVisualState, baseWsUrl, setStatusWithLog]);
 
   const disconnect = useCallback(() => {
     if (socketService) {
       socketService.close(1000, 'User disconnected'); // 1000 is normal closure
       if (mountedRef.current) {
-          setSocketService(null); // Allow for a new service to be created on next connect
-          if (status !== 'error' && status !== 'completed') { // Only set to 'closed' if not already in a terminal state
-              setStatus('closed');
-          }
+        setSocketService(null); // Allow for a new service to be created on next connect
+        if (status !== 'error' && status !== 'completed') { // Only set to 'closed' if not already in a terminal state
+          setStatusWithLog('closed');
+        }
       }
     }
-  }, [socketService, status]);
+  }, [socketService, status, setStatusWithLog]);
 
   // Cleanup on unmount
   useEffect(() => {

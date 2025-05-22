@@ -8,8 +8,7 @@ const PYTHON_LANGGRAPH_BACKEND_TARGET = 'http://localhost:8090';
 export default defineConfig({
   plugins: [react()],
   server: {
-    proxy: {
-      // Rule for /api/v1/lg-vis/ws path - WebSocket
+    proxy: {      // Rule for /api/v1/lg-vis/ws path - WebSocket
       '/api/v1/lg-vis/ws': { 
         target: PYTHON_LANGGRAPH_BACKEND_TARGET,
         ws: true,
@@ -23,8 +22,11 @@ export default defineConfig({
           proxy.on('proxyReq', (proxyReq, req, _res) => {
             console.log('[PROXY PYTHON V1-LG-VIS-WS] Sending WS Request to Python:', req.method, proxyReq.path, 'Original path:', req.url);
           });
-           proxy.on('proxyReqWs', (proxyReq, req, socket, options, head) => {
-            console.log('[PROXY PYTHON V1-LG-VIS-WS] Proxying WS request to Python:', proxyReq.path);
+          proxy.on('proxyReqWs', (proxyReq, req, socket, options, head) => {
+            console.log('[PROXY PYTHON V1-LG-VIS-WS] Proxying WS request to Python:', req.url, '→', proxyReq.path);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('[PROXY PYTHON V1-LG-VIS-WS] Received Response from Python:', proxyRes.statusCode, req.url);
           });
         }
       },
