@@ -61,7 +61,9 @@ const LangGraphListPage: React.FC = () => {
   if (isLoading && graphDefinitions.length === 0) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 150px)' }}>
-        <Spin size="large" tip="Loading graph definitions..." />
+        <Spin size="large">
+          Loading graph definitions...
+        </Spin>
       </div>
     );
   }
@@ -93,7 +95,7 @@ const LangGraphListPage: React.FC = () => {
             )}
           </div>
         }
-        bordered={false}
+        variant="outlined" // Changed from bordered={false}
       >        <Paragraph type="secondary">
           Manage and explore your automated agentic workflows powered by LangGraph.
           Each graph represents a sequence of operations that can be executed and visualized.

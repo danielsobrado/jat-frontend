@@ -167,14 +167,12 @@ export class ApiClientCore {
       return null;
     }
   }
-
   async fetchAuthConfig(): Promise<void> {
     try {
       const requestId = Math.random().toString(36).substring(7);
       console.log(`[${requestId}] Fetching auth configuration`);
 
-      // Use fetch directly here as fetchWithTimeout might not be fully initialized
-      // or to avoid circular dependencies if auth state affects fetchWithTimeout.
+      // Use auth config endpoint with v1 prefix
       const response = await fetch(formatEndpoint('/auth/config'));
 
       if (!response.ok) {

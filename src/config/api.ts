@@ -1,11 +1,9 @@
-const isProd = process.env.NODE_ENV === 'production';
-
 // Base configuration for API endpoints
 export const API_CONFIG = {
   baseUrl: '/api', // Use relative URL in all environments to leverage Vite's proxy
   version: 'v1',
   getFullBaseUrl: () => {
-    return `/v1`; // Use relative URL to leverage Vite's proxy
+    return `${API_CONFIG.baseUrl}/${API_CONFIG.version}`; // Corrected to include baseUrl and version
   }
 };
 
@@ -62,7 +60,7 @@ export const API_ENDPOINTS = {
     delete: '/rag-info/{id}'  // DELETE
   },
   // Add endpoint for frontend config if needed
-  frontendConfig: '/config/frontend',
+  frontendConfig: '/settings/config',
   chat: { 
     completions: '/chat/completions', 
   },

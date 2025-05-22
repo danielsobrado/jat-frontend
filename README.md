@@ -1,6 +1,6 @@
 # Frontend Components (`src/components`)
 
-This directory contains the reusable React components that make up the user interface of the CDP Classifier application. Components are organized by feature area where applicable.
+This directory contains the reusable React components that make up the user interface of the GovFlow Classifier application. Components are organized by feature area where applicable.
 
 ## Core Layout & Navigation
 

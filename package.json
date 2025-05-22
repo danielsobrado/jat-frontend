@@ -1,5 +1,5 @@
 {
-  "name": "cdp-classifier",
+  "name": "GovFlow-classifier",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -10,10 +10,10 @@
     "@tailwindcss/postcss": "^4.1.5",
     "antd": "^5.24.2",
     "axios": "^1.8.4",
-    "cdp-classifier": "file:",
     "classnames": "^2.5.1",
     "dagre": "^0.8.5",
     "file-saver": "^2.0.5",
+    "GovFlow-classifier": "file:",
     "lodash": "^4.17.21",
     "papaparse": "^5.5.2",
     "react": "19.1.0",

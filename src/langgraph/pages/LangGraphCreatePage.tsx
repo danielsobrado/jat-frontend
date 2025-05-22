@@ -1,12 +1,12 @@
 // src/langgraph/pages/LangGraphCreatePage.tsx
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Input, Typography, Spin, Alert, Modal, Row, Col, Form } from 'antd';
+import { Button, Card, Input, Typography, Alert, Modal, Row, Col, Form } from 'antd';
 import { SaveOutlined, CodeOutlined, ArrowLeftOutlined, InfoCircleOutlined } from '@ant-design/icons';
 
 import { useAuth } from '../../context/AuthContext'; // Adjust path
 import { useLangGraphDefinitions } from '../hooks/useLangGraphDefinitions';
-import { CreateGraphRequestFE, FrontendGraphDef } from '../types/langgraph';
+import { CreateGraphRequestFE } from '../types/langgraph';
 // You might want a JSON schema or examples to guide the user
 // import exampleGraphJsonSchema from './exampleGraphSchema.json'; // Example
 
@@ -41,12 +41,12 @@ const EXAMPLE_GRAPH_JSON = `{
 }`;
 
 const LangGraphCreatePage: React.FC = () => {
-  const navigate = useNavigate();
-  const { apiClient, checkPermission } = useAuth();
+  const navigate = useNavigate();  const { apiClient, checkPermission } = useAuth();
   const { createGraphDefinition, isLoading, error } = useLangGraphDefinitions(apiClient, '/v1/lg-vis');
 
   const [graphJson, setGraphJson] = useState<string>(EXAMPLE_GRAPH_JSON);
   const [formError, setFormError] = useState<string | null>(null);
+  const [bordered] = useState(false); // Default to false to match previous behavior
 
   // Permission check
   const canCreate = checkPermission('langgraph:create'); // Example permission
@@ -114,10 +114,9 @@ const LangGraphCreatePage: React.FC = () => {
             </Title>
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/langgraph')}>
                 Back to List
-            </Button>
-          </div>
+            </Button>          </div>
         }
-        bordered={false}
+        variant={bordered ? "outlined" : "borderless"}
       >
         <Paragraph type="secondary">
           Define your LangGraph workflow by providing its structure in JSON format.

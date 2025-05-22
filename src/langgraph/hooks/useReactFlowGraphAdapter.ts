@@ -1,25 +1,23 @@
 // src/langgraph/hooks/useReactFlowGraphAdapter.ts
 import { useState, useEffect, useCallback } from 'react';
 import { Node as ReactFlowNode, Edge as ReactFlowEdge, Position, MarkerType } from 'reactflow';
-import dagre from 'dagre'; // Graph layout library
+import dagre from 'dagre'; 
 import {
   FrontendGraphDef,
   FrontendNodeDef,
   FrontendEdgeDef,
   FrontendConditionalEdgesDef,
   UINodePosition,
-  ReactFlowNodeData, // From your langgraph.ts types
-  ReactFlowEdgeData, // From your langgraph.ts types
+  ReactFlowNodeData, 
+  ReactFlowEdgeData, 
 } from '../types/langgraph';
 
-// --- Dagre Layout Configuration ---
-const dagreGraph = new dagre.graphlib.Graph({ compound: true }); // Enable compound for subgraphs if needed
-dagreGraph.setDefaultEdgeLabel(() => ({})); // Default empty label for edges in dagre
+const dagreGraph = new dagre.graphlib.Graph({ compound: true }); 
+dagreGraph.setDefaultEdgeLabel(() => ({})); 
 dagreGraph.setGraph({
-  rankdir: 'TB', // Top to Bottom layout
-  nodesep: 70,   // Horizontal separation between nodes
-  ranksep: 90,   // Vertical separation between ranks (layers)
-  // align: 'UL', // Alignment for nodes in the rank (UL, UR, DL, DR)
+  rankdir: 'TB', 
+  nodesep: 70,   
+  ranksep: 90,   
 });
 
 const DEFAULT_NODE_WIDTH = 180;
@@ -28,7 +26,7 @@ const DEFAULT_NODE_HEIGHT = 60;
 interface UseReactFlowGraphAdapterResult {
   nodes: ReactFlowNode<ReactFlowNodeData>[];
   edges: ReactFlowEdge<ReactFlowEdgeData>[];
-  layoutGraph: (graphDefinition: FrontendGraphDef, currentExecutionState?: any) => void; // Pass ExecutionState if needed for styling
+  layoutGraph: (graphDefinition: FrontendGraphDef, currentExecutionState?: any) => void; 
   isLoadingLayout: boolean;
   errorLayout: string | null;
 }
@@ -41,8 +39,6 @@ export const useReactFlowGraphAdapter = (): UseReactFlowGraphAdapterResult => {
 
   const layoutGraph = useCallback((
     graphDefinition: FrontendGraphDef,
-    // Optional: Pass current execution state to style nodes/edges during layout
-    // currentExecutionState?: ExecutionState // Assuming ExecutionState is defined elsewhere
   ) => {
     if (!graphDefinition) {
       setNodes([]);
@@ -52,46 +48,48 @@ export const useReactFlowGraphAdapter = (): UseReactFlowGraphAdapterResult => {
 
     setIsLoadingLayout(true);
     setErrorLayout(null);
+    console.log("[useReactFlowGraphAdapter] Starting layoutGraph with definition:", JSON.parse(JSON.stringify(graphDefinition)));
+
 
     try {
       const dagreNodes: ReactFlowNode<ReactFlowNodeData>[] = [];
       const dagreEdges: ReactFlowEdge<ReactFlowEdgeData>[] = [];
 
       // 1. Prepare nodes for Dagre and React Flow
-      graphDefinition.nodes.forEach((nodeDef: FrontendNodeDef) => {
+      // Ensure graphDefinition.nodes is an array before calling forEach
+      (graphDefinition.nodes || []).forEach((nodeDef: FrontendNodeDef) => {
         dagreGraph.setNode(nodeDef.id, {
           width: DEFAULT_NODE_WIDTH,
           height: DEFAULT_NODE_HEIGHT,
-          // label: nodeDef.id, // Dagre uses label for its internal purposes if needed
         });
 
         const nodeData: ReactFlowNodeData = {
-          label: nodeDef.id, // Display label for React Flow
-          type: nodeDef.type, // Original type for custom rendering or logic
+          label: nodeDef.id, 
+          type: nodeDef.type, 
           config: nodeDef.config,
-          status: 'idle', // Default status
+          status: 'idle', 
         };
 
         dagreNodes.push({
           id: nodeDef.id,
-          type: 'customGraphNode', // Or determine based on nodeDef.type for different custom nodes
+          type: 'customGraphNode', 
           data: nodeData,
-          position: nodeDef.uiPosition || { x: 0, y: 0 }, // Initial position, Dagre will override
-          sourcePosition: Position.Bottom, // Default connection points
+          position: nodeDef.uiPosition || { x: 0, y: 0 }, 
+          sourcePosition: Position.Bottom, 
           targetPosition: Position.Top,
-          // style: { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT }, // Can be set here or in custom node
         });
       });
 
       // 2. Prepare standard edges for Dagre and React Flow
-      graphDefinition.edges.forEach((edgeDef: FrontendEdgeDef) => {
+      // Ensure graphDefinition.edges is an array before calling forEach
+      (graphDefinition.edges || []).forEach((edgeDef: FrontendEdgeDef) => {
         dagreGraph.setEdge(edgeDef.source, edgeDef.target);
         dagreEdges.push({
           id: edgeDef.id || `e_${edgeDef.source}__${edgeDef.target}`,
           source: edgeDef.source,
           target: edgeDef.target,
           label: edgeDef.label,
-          type: 'customGraphEdge', // Or 'default', 'smoothstep', etc.
+          type: 'customGraphEdge', 
           animated: edgeDef.animated || false,
           markerEnd: { type: MarkerType.ArrowClosed },
           data: { label: edgeDef.label, status: 'idle' } as ReactFlowEdgeData,
@@ -99,18 +97,20 @@ export const useReactFlowGraphAdapter = (): UseReactFlowGraphAdapterResult => {
       });
 
       // 3. Prepare conditional edges for Dagre and React Flow
-      graphDefinition.conditionalEdges.forEach((condEdgesDef: FrontendConditionalEdgesDef) => {
-        condEdgesDef.mappings.forEach((mapping) => {
+      // Ensure graphDefinition.conditionalEdges is an array before calling forEach
+      (graphDefinition.conditionalEdges || []).forEach((condEdgesDef: FrontendConditionalEdgesDef) => {
+        // Ensure condEdgesDef.mappings is an array before calling forEach
+        (condEdgesDef.mappings || []).forEach((mapping) => {
           dagreGraph.setEdge(condEdgesDef.sourceNodeId, mapping.targetNodeId);
           dagreEdges.push({
             id: `ce_${condEdgesDef.sourceNodeId}__${mapping.targetNodeId}__${mapping.conditionName}`,
             source: condEdgesDef.sourceNodeId,
             target: mapping.targetNodeId,
-            label: mapping.conditionName, // Use condition name as label
-            type: 'customGraphEdge', // Style differently for conditional edges
+            label: mapping.conditionName, 
+            type: 'customGraphEdge', 
             animated: false,
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#FF0072' }, // Example: different color
-            style: { stroke: '#FF0072' }, // Example: different color
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#FF0072' }, 
+            style: { stroke: '#FF0072' }, 
             data: { label: mapping.conditionName, status: 'idle' } as ReactFlowEdgeData,
           });
         });
@@ -126,29 +126,30 @@ export const useReactFlowGraphAdapter = (): UseReactFlowGraphAdapterResult => {
           return {
             ...node,
             position: {
-              x: dagreNode.x - dagreNode.width / 2, // Dagre positions are center-based
+              x: dagreNode.x - dagreNode.width / 2, 
               y: dagreNode.y - dagreNode.height / 2,
             },
           };
         }
-        return node; // Should not happen if node was added to dagreGraph
+        console.warn(`[useReactFlowGraphAdapter] Dagre node not found for ID: ${node.id} during position update.`);
+        return node; 
       });
 
       setNodes(layoutedNodes);
       setEdges(dagreEdges);
+      console.log("[useReactFlowGraphAdapter] Layout finished successfully.");
 
     } catch (err) {
       console.error('[useReactFlowGraphAdapter] Error during graph layout:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to layout graph.';
       setErrorLayout(errorMessage);
-      setNodes([]); // Clear on error
+      setNodes([]); 
       setEdges([]);
     } finally {
       setIsLoadingLayout(false);
     }
-  }, []); // No dependencies, as it operates on passed graphDefinition
+  }, []); 
 
-  // Effect to clear layout if the component unmounts (optional, for cleanup)
   useEffect(() => {
     return () => {
       setNodes([]);

@@ -203,11 +203,9 @@ export class LangGraphApiService {
     this.prefix = prefix;
     console.log(`[LangGraphApiService] Initialized with prefix: ${this.prefix}`);
   }
-
   private async directGet<T = any>(path: string, params?: Record<string, any>): Promise<T> {
-    // Path is already the full path like "/v1/lg-vis/graphs"
-    // Ensure it starts with a single '/'
-    const fullPath = path.startsWith('/') ? path : `/${path}`;
+    // Ensure path starts with /api to match the Vite proxy configuration
+    const fullPath = path.startsWith('/api') ? path : `/api${path.startsWith('/') ? path : `/${path}`}`;
     
     let urlString = fullPath;
     if (params && Object.keys(params).length > 0) {
@@ -227,7 +225,7 @@ export class LangGraphApiService {
     const response = await fetch(urlString, { method: 'GET' }); // Direct fetch
     if (!response.ok) {
       const errorData = await response.text();
-      throw new Error(`HTTP error! status: ${response.status}, path: ${urlString}, details: ${errorData}`);
+      throw new Error(`HTTP error! status: ${response.status}, path: ${path}, details: ${errorData}`);
     }
     return response.json() as Promise<T>;
   }
@@ -240,9 +238,9 @@ export class LangGraphApiService {
   async getGraphDefinition(graphId: string): Promise<FrontendGraphDef> {
     return this.directGet<FrontendGraphDef>(`${this.prefix}/graphs/${graphId}`);
   }
-
   private async directPost<T = any>(path: string, body: any): Promise<T> {
-    const fullPath = path.startsWith('/') ? path : `/${path}`;
+    // Ensure path starts with /api to match the Vite proxy configuration
+    const fullPath = path.startsWith('/api') ? path : `/api${path.startsWith('/') ? path : `/${path}`}`;
     console.log(`[LangGraphApiService] Making direct POST request to: ${fullPath}`);
     const response = await fetch(fullPath, {
       method: 'POST',
@@ -251,7 +249,7 @@ export class LangGraphApiService {
     });
     if (!response.ok) {
       const errorData = await response.text();
-      throw new Error(`HTTP error! status: ${response.status}, path: ${fullPath}, details: ${errorData}`);
+      throw new Error(`HTTP error! status: ${response.status}, path: ${path}, details: ${errorData}`);
     }
     return response.json() as Promise<T>;
   }
