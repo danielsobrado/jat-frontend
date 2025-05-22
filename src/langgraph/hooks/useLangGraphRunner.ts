@@ -43,7 +43,7 @@ const initialExecutionState: ExecutionState = {
 export interface UseLangGraphRunnerResult {
   connectAndExecute: (
     graphId: string,
-    initialArgs?: Record<string, any>,
+    executionRequest: ExecuteGraphRequestFE, // New signature
     predefinedExecutionId?: string // For re-connecting to an existing run (if supported by backend)
   ) => void;
   disconnect: () => void;
@@ -172,11 +172,9 @@ export const useLangGraphRunner = (
       // Visual state (activeNodeIds etc.) is also kept for inspection of last state.
     }
   }, [status]);
-
-
   const connectAndExecute = useCallback((
     graphId: string,
-    initialArgs: Record<string, any> = {},
+    executionRequest: ExecuteGraphRequestFE, // New: this object contains inputArgs and simulation_delay_ms
     predefinedExecutionId?: string
   ) => {
     if (socketService) {
@@ -196,11 +194,9 @@ export const useLangGraphRunner = (
     const newSocketService = new LangGraphSocketService({
       onMessage: handleNewEvent,
       onOpen: () => {
-        handleSocketOpen(); // Sets status to 'connected'
-        // Send initial message to start execution AFTER connection is open
-        const initialMessage: ExecuteGraphRequestFE = { inputArgs: initialArgs || {} };
-        newSocketService.send(initialMessage);
-        // Status will move to 'starting' and then 'running' based on backend events
+        handleSocketOpen(); // Sets status to 'connected'        // Send initial message to start execution AFTER connection is open
+        console.log('[useLangGraphRunner] Sending initial execution request:', executionRequest);
+        newSocketService.send(executionRequest); // << MODIFIED: Send the whole object
       },
       onError: handleSocketError,
       onClose: handleSocketClose,

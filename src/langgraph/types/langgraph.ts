@@ -191,11 +191,12 @@ export type LangGraphExecutionEvent =
 
 /**
  * Request to initiate execution of a graph via HTTP (if implemented).
- * Mirrors backend: ExecuteGraphRequest
+ * This is also the structure of the initial message sent over WebSocket.
  */
 export interface ExecuteGraphRequestFE {
   inputArgs?: Record<string, any>;
-  // configOverrides?: Record<string, any>;
+  configOverrides?: Record<string, any>; // Keep if you plan to use it
+  simulation_delay_ms?: number; // Milliseconds to delay each node step
 }
 
 /**

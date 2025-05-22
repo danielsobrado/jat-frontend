@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useReactFlow, ReactFlowProvider } from 'reactflow'; 
 import type { Node as ReactFlowNodeUi, Edge as ReactFlowEdgeUi, NodeMouseHandler, EdgeMouseHandler } from 'reactflow';
 
-import { Button, Input, Card, Spin, Alert, Typography, Tooltip, Modal, Row, Col, Tag } from 'antd';
+import { Button, Input, Card, Spin, Alert, Typography, Tooltip, Modal, Row, Col, Tag, Checkbox, InputNumber } from 'antd';
 import { PlayCircleOutlined, StopOutlined, EditOutlined, ReloadOutlined, ShareAltOutlined } from '@ant-design/icons';
 
 import { useAuth } from '../../context/AuthContext'; 
@@ -49,11 +49,12 @@ const LangGraphViewPageContent: React.FC = () => {
     graphError: executionGraphError,
     currentGraphState, 
   } = useLangGraphRunner(); 
-
   // --- UI State ---
   const [initialArgsJson, setInitialArgsJson] = useState<string>('{}');
   const [selectedElement, setSelectedElement] = useState<ReactFlowNodeUi<ReactFlowNodeData> | ReactFlowEdgeUi<ReactFlowEdgeData> | null>(null);
   const [isInspectorPanelOpen, setIsInspectorPanelOpen] = useState<boolean>(false);
+  const [simulateDelay, setSimulateDelay] = useState<boolean>(false);
+  const [delayMs, setDelayMs] = useState<number>(1000); // Default 1 second delay
 
   useEffect(() => {
     if (graphId) {
@@ -95,17 +96,24 @@ const LangGraphViewPageContent: React.FC = () => {
     if (executionStatus === 'running' || executionStatus === 'connecting' || executionStatus === 'starting') {
       Modal.warn({ title: 'In Progress', content: 'Graph is already running or attempting to connect.' });
       return;
-    }
-
-    let parsedArgs: Record<string, any> = {};
+    }    let parsedArgs: Record<string, any> = {};
     try {
       parsedArgs = JSON.parse(initialArgsJson);
     } catch (e) {
       Modal.error({ title: 'Invalid Input', content: 'Initial arguments must be valid JSON.' });
       return;
     }
-    connectAndExecute(graphId, parsedArgs);
-  }, [graphId, graphDefinition, initialArgsJson, connectAndExecute, executionStatus]);
+
+    const executionOptions: ExecuteGraphRequestFE = {
+      inputArgs: parsedArgs,
+    };
+
+    if (simulateDelay && delayMs > 0) {
+      executionOptions.simulation_delay_ms = delayMs;
+    }
+
+    connectAndExecute(graphId, executionOptions);
+  }, [graphId, graphDefinition, initialArgsJson, connectAndExecute, executionStatus, simulateDelay, delayMs]);
 
   const handleStopExecution = useCallback(() => {
     disconnect();
@@ -169,19 +177,35 @@ const LangGraphViewPageContent: React.FC = () => {
   }
 
   if (definitionError) {
-    return (
-      <div className="page-container">
+    return (      <div className="page-container">
         <Alert message="Error Loading Graph Definition" description={definitionError} type="error" showIcon />
-        <Button onClick={() => navigate('/langgraph')} style={{ marginTop: '16px' }}>Back to List</Button>
+        <Button 
+          htmlType="button"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate('/langgraph');
+          }} 
+          style={{ marginTop: '16px' }}
+        >
+          Back to List
+        </Button>
       </div>
     );
   }
 
   if (!graphDefinition) {
-    return (
-      <div className="page-container">
+    return (      <div className="page-container">
         <Alert message="Graph Not Found" description={`Could not find graph definition for ID: ${graphId}`} type="warning" showIcon />
-         <Button onClick={() => navigate('/langgraph')} style={{ marginTop: '16px' }}>Back to List</Button>
+         <Button 
+           htmlType="button"
+           onClick={(e) => {
+             e.preventDefault();
+             navigate('/langgraph');
+           }} 
+           style={{ marginTop: '16px' }}
+         >
+           Back to List
+         </Button>
       </div>
     );
   }
@@ -195,22 +219,26 @@ const LangGraphViewPageContent: React.FC = () => {
               <ShareAltOutlined style={{ marginRight: '10px' }} />
               {graphDefinition.name}
               <Text type="secondary" style={{ marginLeft: '10px', fontSize: '0.9em' }}>(ID: {graphDefinition.id})</Text>
-            </Title>
-            {checkPermission('langgraph:edit') && !graphDefinition.id.startsWith('static_') && (
+            </Title>            {checkPermission('langgraph:edit') && !graphDefinition.id.startsWith('static_') && (
                 <Tooltip title="Edit Graph Definition">
                     <Button
+                        htmlType="button"
                         icon={<EditOutlined />}
-                        onClick={() => navigate(`/langgraph/edit/${graphId}`)}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            navigate(`/langgraph/edit/${graphId}`);
+                        }}
                     >
                         Edit
-                    </Button>                </Tooltip>
+                    </Button>                
+                </Tooltip>
             )}
           </div>
         }
         variant="borderless"
         style={{ marginBottom: '16px' }}
-      >
-        {graphDefinition.description && <Paragraph type="secondary">{graphDefinition.description}</Paragraph>}        <Row gutter={16} align="bottom">
+      >        {graphDefinition.description && <Paragraph type="secondary">{graphDefinition.description}</Paragraph>}        
+        <Row gutter={16} align="bottom" style={{ marginBottom: '16px' }}>
           <Col flex="auto">
             <Text strong>Initial Arguments (JSON):</Text>
             <TextArea
@@ -223,13 +251,41 @@ const LangGraphViewPageContent: React.FC = () => {
             />
           </Col>
         </Row>
-        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        
+        {/* Simulation Delay Row */}
+        <Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
+          <Col>
+            <Checkbox
+              checked={simulateDelay}
+              onChange={(e) => setSimulateDelay(e.target.checked)}
+              disabled={executionStatus === 'running' || executionStatus === 'starting'}
+            >
+              Simulate Node Delay
+            </Checkbox>
+          </Col>
+          <Col>
+            <InputNumber
+              min={100}
+              max={10000}
+              step={100}
+              value={delayMs}
+              onChange={(value) => setDelayMs(value || 100)}
+              disabled={!simulateDelay || executionStatus === 'running' || executionStatus === 'starting'}
+              addonAfter="ms"
+            />
+          </Col>
+        </Row>
+          <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
             {executionStatus !== 'running' && executionStatus !== 'starting' ? (
               <Tooltip title="Start graph execution">
                 <Button
                   type="primary"
+                  htmlType="button"
                   icon={<PlayCircleOutlined />}
-                  onClick={handleExecuteGraph}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleExecuteGraph();
+                  }}
                   loading={executionStatus === 'connecting'}
                   disabled={!checkPermission('langgraph:execute')}
                 >
@@ -240,19 +296,24 @@ const LangGraphViewPageContent: React.FC = () => {
               <Tooltip title="Stop graph execution">
                 <Button
                   type="default"
+                  htmlType="button"
                   danger
                   icon={<StopOutlined />}
-                  onClick={handleStopExecution}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleStopExecution();
+                  }}
                 >
                   Stop
                 </Button>
               </Tooltip>
             )}
-            
-            <Tooltip title="Reload graph definition and reset layout">
+              <Tooltip title="Reload graph definition and reset layout">
                 <Button
+                    htmlType="button"
                     icon={<ReloadOutlined />}
-                    onClick={() => {
+                    onClick={(e) => {
+                        e.preventDefault();
                         disconnect(); 
                         if(graphId) getGraphDefinition(graphId).then(def => def && setGraphDefinition(def));
                     }}
