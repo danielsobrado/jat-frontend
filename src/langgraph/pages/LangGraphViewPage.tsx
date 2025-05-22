@@ -203,16 +203,14 @@ const LangGraphViewPageContent: React.FC = () => {
                         onClick={() => navigate(`/langgraph/edit/${graphId}`)}
                     >
                         Edit
-                    </Button>
-                </Tooltip>
+                    </Button>                </Tooltip>
             )}
           </div>
         }
-        bordered={false}
+        variant="borderless"
         style={{ marginBottom: '16px' }}
       >
-        {graphDefinition.description && <Paragraph type="secondary">{graphDefinition.description}</Paragraph>}
-        <Row gutter={16} align="bottom">
+        {graphDefinition.description && <Paragraph type="secondary">{graphDefinition.description}</Paragraph>}        <Row gutter={16} align="bottom">
           <Col flex="auto">
             <Text strong>Initial Arguments (JSON):</Text>
             <TextArea
@@ -224,7 +222,8 @@ const LangGraphViewPageContent: React.FC = () => {
               style={{ fontFamily: 'monospace', fontSize: '12px' }}
             />
           </Col>
-          <Col>
+        </Row>
+        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
             {executionStatus !== 'running' && executionStatus !== 'starting' ? (
               <Tooltip title="Start graph execution">
                 <Button
@@ -249,23 +248,20 @@ const LangGraphViewPageContent: React.FC = () => {
                 </Button>
               </Tooltip>
             )}
-          </Col>
-           <Col>
-                <Tooltip title="Reload graph definition and reset layout">
-                    <Button
-                        icon={<ReloadOutlined />}
-                        onClick={() => {
-                            disconnect(); 
-                            if(graphId) getGraphDefinition(graphId).then(def => def && setGraphDefinition(def));
-                        }}
-                        disabled={isLoadingDefinition || isLoadingLayout}
-                    >
-                        Reload Graph
-                    </Button>
-                </Tooltip>
-            </Col>
-        </Row>
-        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            
+            <Tooltip title="Reload graph definition and reset layout">
+                <Button
+                    icon={<ReloadOutlined />}
+                    onClick={() => {
+                        disconnect(); 
+                        if(graphId) getGraphDefinition(graphId).then(def => def && setGraphDefinition(def));
+                    }}
+                    disabled={isLoadingDefinition || isLoadingLayout}
+                >
+                    Reload Graph
+                </Button>
+            </Tooltip>
+            
             <Text>Execution Status: <Tag color={
                 executionStatus === 'running' || executionStatus === 'starting' ? 'blue' :
                 executionStatus === 'completed' ? 'green' :

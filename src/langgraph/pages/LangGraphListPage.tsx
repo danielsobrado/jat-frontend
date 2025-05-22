@@ -86,7 +86,7 @@ const LangGraphListPage: React.FC = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Title level={2} style={{ margin: 0 }}>
               <ShareAltOutlined style={{ marginRight: '12px' }} />
-              Agentic Workflows (Graphs)
+              Agentic Workflows
             </Title>
             {checkPermission('langgraph:create') && (
               <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateNew}>
