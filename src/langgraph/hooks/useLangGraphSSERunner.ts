@@ -107,18 +107,6 @@ export const useLangGraphSSERunner = (
         });
         break;
 
-      case 'edge_taken':
-        setCurrentGraphState((prevState) => {
-          const newState = { ...prevState };
-          const edgeId = `${event.sourceNodeId}__${event.targetNodeId}${
-            event.edgeLabel ? `__${event.edgeLabel}` : ''
-          }`;
-          newState.traversedEdgeIds = new Set(prevState.traversedEdgeIds);
-          newState.traversedEdgeIds.add(edgeId);
-          return newState;
-        });
-        break;
-
       case 'graph_execution_end':
         setStatus('completed');
         break;

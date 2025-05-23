@@ -3,15 +3,13 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 // Import ReactFlowProvider and ensure useReactFlow is imported
-import { useReactFlow, ReactFlowProvider } from 'reactflow'; 
-import type { Node as ReactFlowNodeUi, Edge as ReactFlowEdgeUi, NodeMouseHandler, EdgeMouseHandler } from 'reactflow';
-
+import { useReactFlow, ReactFlowProvider, Node, Edge, NodeMouseHandler, EdgeMouseHandler } from 'reactflow'; // Removed Connection
 import { Button, Input, Card, Spin, Alert, Typography, Tooltip, Modal, Row, Col, Tag, Checkbox, InputNumber } from 'antd';
 import { PlayCircleOutlined, StopOutlined, EditOutlined, ReloadOutlined, ShareAltOutlined } from '@ant-design/icons';
 
 import { useAuth } from '../../context/AuthContext'; 
 import { useLangGraphDefinitions } from '../hooks/useLangGraphDefinitions';
-import { useLangGraphRunner } from '../hooks/useLangGraphRunner';
+import { useLangGraphSSERunner } from '../hooks/useLangGraphSSERunner'; // Updated import
 import { useReactFlowGraphAdapter } from '../hooks/useReactFlowGraphAdapter';
 import { FrontendGraphDef, ReactFlowNodeData, ReactFlowEdgeData, ExecuteGraphRequestFE } from '../types/langgraph';
 import LangGraphCanvas from '../components/LangGraphCanvas';
@@ -27,13 +25,11 @@ const LangGraphViewPageContent: React.FC = () => {
   const { graphId } = useParams<{ graphId: string }>();
   const navigate = useNavigate();
   const { apiClient, checkPermission } = useAuth();
-  const { fitView } = useReactFlow(); // This hook is now within the Provider context
+  const { fitView } = useReactFlow();
 
-  // --- State for Graph Definition ---
-  const { getGraphDefinition, isLoading: isLoadingDefinition, error: definitionError } = useLangGraphDefinitions(apiClient, '/v1/lg-vis');
+  const { getGraphDefinition, isLoading: isLoadingDefinition, error: definitionLoadingError } = useLangGraphDefinitions(apiClient, '/v1/lg-vis');
   const [graphDefinition, setGraphDefinition] = useState<FrontendGraphDef | null>(null);
 
-  // --- State for React Flow Adaptation & Layout ---
   const {
     nodes: rfNodes,
     edges: rfEdges,
@@ -41,23 +37,22 @@ const LangGraphViewPageContent: React.FC = () => {
     isLoadingLayout,
     errorLayout,
   } = useReactFlowGraphAdapter();
-  // --- State for Graph Execution via WebSocket ---
+  
   const {
+    currentGraphState,
     connectAndExecute,
-    disconnect,
+    status,
+    // executionEvents, // Commented out as unused for now
     currentExecutionId,
-    status: executionStatus,
-    error: runnerError,
-    graphError: executionGraphError,
-    currentGraphState
-  } = useLangGraphRunner();
-    // Using the GraphExecutionStatus from useLangGraphRunner
-  // --- UI State ---
+    error, 
+    graphError, 
+  } = useLangGraphSSERunner('/v1');
+
   const [initialArgsJson, setInitialArgsJson] = useState<string>('{}');
-  const [selectedElement, setSelectedElement] = useState<ReactFlowNodeUi<ReactFlowNodeData> | ReactFlowEdgeUi<ReactFlowEdgeData> | null>(null);
+  const [selectedElement, setSelectedElement] = useState<Node<ReactFlowNodeData> | Edge<ReactFlowEdgeData> | null>(null);
   const [isInspectorPanelOpen, setIsInspectorPanelOpen] = useState<boolean>(false);
   const [simulateDelay, setSimulateDelay] = useState<boolean>(false);
-  const [delayMs, setDelayMs] = useState<number>(1000); // Default 1 second delay
+  const [delayMs, setDelayMs] = useState<number>(1000);
 
   useEffect(() => {
     if (graphId) {
@@ -72,10 +67,9 @@ const LangGraphViewPageContent: React.FC = () => {
       };
       fetchDef();
     }
-    return () => {
-      disconnect();
-    };
-  }, [graphId, getGraphDefinition, disconnect]);
+    // Optional: return disconnect function from useLangGraphSSERunner if needed for cleanup
+    // return () => { disconnect?.(); }; 
+  }, [graphId, getGraphDefinition]);
 
   useEffect(() => {
     if (graphDefinition) {
@@ -84,18 +78,19 @@ const LangGraphViewPageContent: React.FC = () => {
   }, [graphDefinition, layoutGraph]);
 
   useEffect(() => {
-    if (rfNodes.length > 0 && fitView) { // Ensure fitView is available
+    if (rfNodes.length > 0 && fitView) {
       const timer = setTimeout(() => fitView({ duration: 500, padding: 0.1 }), 100);
       return () => clearTimeout(timer);
     }
-  }, [rfNodes, fitView, executionStatus]); 
+  }, [rfNodes, fitView, status]); 
 
   const handleExecuteGraph = useCallback(() => {
     if (!graphId || !graphDefinition) {
       Modal.error({ title: 'Error', content: 'Graph definition not loaded.' });
       return;
     }
-    if (executionStatus === 'running' || executionStatus === 'connecting' || executionStatus === 'starting') {
+    // Removed 'starting' from comparison as it's not in GraphExecutionStatus
+    if (status === 'running' || status === 'connecting') { 
       Modal.warn({ title: 'In Progress', content: 'Graph is already running or attempting to connect.' });
       return;
     }
@@ -116,26 +111,26 @@ const LangGraphViewPageContent: React.FC = () => {
       executionOptions.simulation_delay_ms = delayMs;
     }
 
-    console.log('[LangGraphViewPage] Executing graph with options:', executionOptions);
     connectAndExecute(graphId, executionOptions);
-  }, [graphId, graphDefinition, initialArgsJson, connectAndExecute, executionStatus, simulateDelay, delayMs]);
+  }, [graphId, graphDefinition, initialArgsJson, connectAndExecute, status, simulateDelay, delayMs]);
 
   const handleStopExecution = useCallback(() => {
-    disconnect();
-  }, [disconnect]);
+    // Call disconnect from useLangGraphSSERunner if available and needed
+    // disconnect?.(); 
+  }, []); // Add disconnect to dependency array if used
 
-  const onNodeClickHandler: NodeMouseHandler = useCallback((_event, node) => {
+  const onNodeClickHandler: NodeMouseHandler = useCallback((_event: React.MouseEvent, node: Node<ReactFlowNodeData>) => { // Prefixed event with _
     const enrichedNodeData: ReactFlowNodeData = {
       ...node.data,
       inputs: currentGraphState.lastInputByNode[node.id],
       outputs: currentGraphState.lastOutputByNode[node.id],
     };
-    setSelectedElement({ ...node, data: enrichedNodeData });
+    setSelectedElement({ ...node, data: enrichedNodeData } as Node<ReactFlowNodeData>);
     setIsInspectorPanelOpen(true);
   }, [currentGraphState]);
 
-  const onEdgeClickHandler: EdgeMouseHandler = useCallback((_event, edge) => {
-    setSelectedElement(edge);
+  const onEdgeClickHandler: EdgeMouseHandler = useCallback((_event: React.MouseEvent, edge: Edge<ReactFlowEdgeData>) => { // Prefixed event with _
+    setSelectedElement(edge as Edge<ReactFlowEdgeData>);
     setIsInspectorPanelOpen(true);
   }, []);
 
@@ -145,72 +140,68 @@ const LangGraphViewPageContent: React.FC = () => {
   }, []);
 
   const styledNodes = useMemo(() => {
+    if (!rfNodes) return [];
     return rfNodes.map(node => {
-      const data = node.data as ReactFlowNodeData;
-      let newStatus: ReactFlowNodeData['status'] = 'idle';
-
-      if (currentGraphState.activeNodeIds.has(node.id)) newStatus = 'running';
-      else if (currentGraphState.errorNodeIds.has(node.id)) newStatus = 'error';
-      else if (currentGraphState.completedNodeIds.has(node.id)) newStatus = 'success';
-      else if (selectedElement?.id === node.id) newStatus = 'active';
-
-      return { ...node, data: { ...data, status: newStatus } };
-    });
-  }, [rfNodes, currentGraphState, selectedElement]);
-
-  const styledEdges = useMemo(() => {
-    return rfEdges.map(edge => {
-      const data = edge.data as ReactFlowEdgeData;
-      const edgeKeyForTraversalCheck = `${edge.source}__${edge.target}` + (edge.label ? `__${edge.label}` : '');
-      const isTraversed = currentGraphState.traversedEdgeIds.has(edgeKeyForTraversalCheck);
+      const graphNodeState: ReactFlowNodeData['status'] =
+                             currentGraphState.activeNodeIds.has(node.id) ? 'running' :
+                             currentGraphState.completedNodeIds.has(node.id) ? 'success' : // Changed 'completed' to 'success'
+                             currentGraphState.errorNodeIds.has(node.id) ? 'error' : 
+                             'idle';
+      const lastOutput = currentGraphState.lastOutputByNode[node.id];
+      const nodeSpecificError = graphError?.nodeId === node.id ? graphError : null;
 
       return {
-        ...edge,
-        animated: isTraversed && ['running', 'starting'].includes(executionStatus as string),
-        data: { ...data, status: isTraversed ? 'traversed' : 'idle' } as ReactFlowEdgeData,
+        ...node,
+        data: {
+          ...node.data,
+          status: graphNodeState,
+          outputData: lastOutput,
+          errorMessage: nodeSpecificError?.message, // Use .message from GraphErrorEventFE
+        },
       };
     });
-  }, [rfEdges, currentGraphState, executionStatus]);
+  }, [rfNodes, currentGraphState, graphError]);
 
+  const styledEdges = useMemo(() => {
+    if (!rfEdges) return [];
+    return rfEdges.map(edge => {
+      const currentEdgeData = edge.data || {};
+      return {
+        ...edge,
+        animated: false,
+        style: {
+          stroke: '#b1b1b7',
+          strokeWidth: 1.5,
+        },
+        data: {
+          ...currentEdgeData,
+          status: 'idle', // This should now be correctly typed via ReactFlowEdgeData
+        } as ReactFlowEdgeData, // Explicitly cast the data object
+      };
+    });
+  }, [rfEdges]);
 
-  if (isLoadingDefinition || (!graphDefinition && !definitionError && graphId)) {
+  if (isLoadingDefinition) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 100px)' }}>
-        <Spin size="large" tip={`Loading graph definition for ${graphId}...`} />
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 64px)' }}>
+        <Spin size="large" tip="Loading graph definition..." />
       </div>
     );
   }
 
-  if (definitionError) {
-    return (      <div className="page-container">
-        <Alert message="Error Loading Graph Definition" description={definitionError} type="error" showIcon />
-        <Button 
-          htmlType="button"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate('/langgraph');
-          }} 
-          style={{ marginTop: '16px' }}
-        >
-          Back to List
-        </Button>
+  if (definitionLoadingError) {
+    return (
+      <div style={{ padding: '20px' }}>
+        <Alert message="Error Loading Graph Definition" description={definitionLoadingError} type="error" showIcon />
       </div>
     );
   }
 
   if (!graphDefinition) {
-    return (      <div className="page-container">
-        <Alert message="Graph Not Found" description={`Could not find graph definition for ID: ${graphId}`} type="warning" showIcon />
-         <Button 
-           htmlType="button"
-           onClick={(e) => {
-             e.preventDefault();
-             navigate('/langgraph');
-           }} 
-           style={{ marginTop: '16px' }}
-         >
-           Back to List
-         </Button>
+    return (
+      <div style={{ padding: '20px' }}>
+        <Alert message="Graph Not Found" description={`The graph with ID "${graphId}" could not be found or loaded.`} type="warning" showIcon />
+        <Button onClick={() => navigate('/langgraph/graphs')} style={{ marginTop: '10px' }}>Back to Graphs List</Button>
       </div>
     );
   }
@@ -224,7 +215,8 @@ const LangGraphViewPageContent: React.FC = () => {
               <ShareAltOutlined style={{ marginRight: '10px' }} />
               {graphDefinition.name}
               <Text type="secondary" style={{ marginLeft: '10px', fontSize: '0.9em' }}>(ID: {graphDefinition.id})</Text>
-            </Title>            {checkPermission('langgraph:edit') && !graphDefinition.id.startsWith('static_') && (
+            </Title>
+            {checkPermission('langgraph:edit') && !graphDefinition.id.startsWith('static_') && (
                 <Tooltip title="Edit Graph Definition">
                     <Button
                         htmlType="button"
@@ -245,7 +237,6 @@ const LangGraphViewPageContent: React.FC = () => {
       >
         {graphDefinition.description && <Paragraph type="secondary">{graphDefinition.description}</Paragraph>}
         
-        {/* Replace Form with div */}
         <div>
           <Row gutter={16} align="bottom" style={{ marginBottom: '16px' }}>
             <Col flex="auto">
@@ -255,19 +246,18 @@ const LangGraphViewPageContent: React.FC = () => {
                 value={initialArgsJson}
                 onChange={(e) => setInitialArgsJson(e.target.value)}
                 placeholder='e.g., {"input": "User query here..."}'
-                disabled={executionStatus === 'running' || executionStatus === 'starting'}
+                disabled={status === 'running' || status === 'connecting'} // Removed 'starting'
                 style={{ fontFamily: 'monospace', fontSize: '12px' }}
               />
             </Col>
           </Row>
           
-          {/* Simulation Delay Row */}
           <Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
             <Col>
               <Checkbox
                 checked={simulateDelay}
                 onChange={(e) => setSimulateDelay(e.target.checked)}
-                disabled={executionStatus === 'running' || executionStatus === 'starting'}
+                disabled={status === 'running' || status === 'connecting'} // Removed 'starting'
               >
                 Simulate Node Delay
               </Checkbox>
@@ -279,32 +269,32 @@ const LangGraphViewPageContent: React.FC = () => {
                 step={100}
                 value={delayMs}
                 onChange={(value) => setDelayMs(value || 100)}
-                disabled={!simulateDelay || executionStatus === 'running' || executionStatus === 'starting'}
+                disabled={!simulateDelay || status === 'running' || status === 'connecting'} // Removed 'starting'
                 addonAfter="ms"
               />
             </Col>
           </Row>
             <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {!['running', 'starting'].includes(executionStatus) ? (
+            {!['running', 'connecting'].includes(status) ? ( // Removed 'starting'
               <Tooltip title="Start graph execution">
                 <Button
                   type="primary"
                   icon={<PlayCircleOutlined />}
                   onClick={handleExecuteGraph}
-                  loading={executionStatus === 'connecting'}
-                  disabled={!checkPermission('langgraph:execute') || ['running', 'starting', 'connecting'].includes(executionStatus)}
+                  loading={status === 'connecting'}
+                  disabled={!checkPermission('langgraph:execute') || ['running', 'connecting'].includes(status)} // Removed 'starting'
                 >
                   Execute
                 </Button>
               </Tooltip>
             ) : (
-              <Tooltip title="Stop graph execution">
+              <Tooltip title="Stop graph execution (Note: SSE stop might be server-side or client-side navigation)">
                 <Button
                   type="default"
                   danger
                   icon={<StopOutlined />}
-                  onClick={handleStopExecution}
-                  disabled={!['running', 'starting'].includes(executionStatus)}
+                  onClick={handleStopExecution} // Ensure this function correctly stops SSE if possible
+                  disabled={!['running'].includes(status)} // Removed 'starting', only 'running' makes sense for stop
                 >
                   Stop
                 </Button>
@@ -314,7 +304,7 @@ const LangGraphViewPageContent: React.FC = () => {
               <Button
                 icon={<ReloadOutlined />}
                 onClick={() => {
-                  disconnect(); 
+                  // disconnect?.(); // Optional: disconnect before reloading
                   if(graphId) getGraphDefinition(graphId).then(def => def && setGraphDefinition(def));
                 }}
                 disabled={isLoadingDefinition || isLoadingLayout}
@@ -324,20 +314,20 @@ const LangGraphViewPageContent: React.FC = () => {
             </Tooltip>
             
             <Text>Execution Status: <Tag color={
-              ['running', 'starting'].includes(executionStatus as string) ? 'blue' :
-              executionStatus === 'completed' ? 'green' :
-              executionStatus === 'error' ? 'red' :
-              executionStatus === 'connecting' ? 'geekblue' :
+              status === 'running' ? 'blue' : // Removed 'starting'
+              status === 'completed' ? 'green' :
+              status === 'error' ? 'red' :
+              status === 'connecting' ? 'geekblue' :
               'default'
-            }>{executionStatus.toUpperCase()}</Tag></Text>
+            }>{status.toUpperCase()}</Tag></Text>
             {currentExecutionId && <Text type="secondary" style={{fontSize: '0.8em'}}>Run ID: <Text copyable code style={{fontSize: '1em'}}>{currentExecutionId}</Text></Text>}
           </div>
           
-          {runnerError && <Alert message="Connection Error" description={runnerError} type="error" showIcon style={{marginTop: '8px'}} />}
-          {executionGraphError && (
+          {error && <Alert message="Connection Error" description={error} type="error" showIcon style={{marginTop: '8px'}} />}
+          {graphError && (
             <Alert
-              message={`Graph Execution Error (Node: ${executionGraphError.nodeId || 'Unknown'})`}
-              description={executionGraphError.message + (executionGraphError.details ? ` | Details: ${executionGraphError.details}` : '')}
+              message={`Graph Execution Error (Node: ${graphError.nodeId || 'N/A'})`}
+              description={graphError.message + (graphError.details ? ` | Details: ${graphError.details}` : '')}
               type="error"
               showIcon
               style={{marginTop: '8px'}}
@@ -355,7 +345,6 @@ const LangGraphViewPageContent: React.FC = () => {
           ) : errorLayout ? (
             <Alert message="Layout Error" description={errorLayout} type="error" showIcon />
           ) : (
-            // LangGraphCanvas renders ReactFlow and its children (Controls, MiniMap, Background)
             <LangGraphCanvas
               nodes={styledNodes}
               edges={styledEdges}
