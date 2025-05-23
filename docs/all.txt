@@ -10402,7 +10402,7 @@ export const RagInfoTab: React.FC<RagInfoTabProps> = ({ apiClient }) => {
                 <div className="flex space-x-2">
                     <button
                         onClick={handleImportClick}
-                        className="btn btn-secondary inline-flex items-center"
+                        className=GovIlmn-secondary inline-flex items-center"
                         disabled={loading || isImporting || isExporting || !checkPermission('rag:manage')}
                         title={!checkPermission('rag:manage') ? "Permission denied" : "Import data from CSV file"}
                     >
@@ -14944,7 +14944,7 @@ export const RoleTable: React.FC<RoleTableProps> = ({
       key: 'actions',
       width: 120,
       render: (_: any, record: Role) => (
-        <Space size="small">
+        <Space size="small">    
           <Tooltip title="Edit Role">
             <Button
               type="text"

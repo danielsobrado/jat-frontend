@@ -26,7 +26,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({ ragEnabled, onLogout }) => {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1 className="app-title">GovFlow</h1>
+        <h1 className="app-title">GovIlm</h1>
       </header>
       
       <div className="app-content">

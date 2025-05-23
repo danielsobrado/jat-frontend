@@ -1,4 +1,5 @@
 // src/langgraph/pages/LangGraphViewPage.tsx
+
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 // Import ReactFlowProvider and ensure useReactFlow is imported
@@ -12,12 +13,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useLangGraphDefinitions } from '../hooks/useLangGraphDefinitions';
 import { useLangGraphRunner } from '../hooks/useLangGraphRunner';
 import { useReactFlowGraphAdapter } from '../hooks/useReactFlowGraphAdapter';
-import { FrontendGraphDef, ReactFlowNodeData, ReactFlowEdgeData } from '../types/langgraph';
+import { FrontendGraphDef, ReactFlowNodeData, ReactFlowEdgeData, ExecuteGraphRequestFE } from '../types/langgraph';
 import LangGraphCanvas from '../components/LangGraphCanvas';
 import NodeInspectorPanel from '../components/NodeInspectorPanel';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
+
+// Using direct string comparisons for execution status checks
 
 // Renamed the original component to be wrapped by the Provider
 const LangGraphViewPageContent: React.FC = () => {
@@ -38,7 +41,6 @@ const LangGraphViewPageContent: React.FC = () => {
     isLoadingLayout,
     errorLayout,
   } = useReactFlowGraphAdapter();
-
   // --- State for Graph Execution via WebSocket ---
   const {
     connectAndExecute,
@@ -47,8 +49,9 @@ const LangGraphViewPageContent: React.FC = () => {
     status: executionStatus,
     error: runnerError,
     graphError: executionGraphError,
-    currentGraphState, 
-  } = useLangGraphRunner(); 
+    currentGraphState
+  } = useLangGraphRunner();
+    // Using the GraphExecutionStatus from useLangGraphRunner
   // --- UI State ---
   const [initialArgsJson, setInitialArgsJson] = useState<string>('{}');
   const [selectedElement, setSelectedElement] = useState<ReactFlowNodeUi<ReactFlowNodeData> | ReactFlowEdgeUi<ReactFlowEdgeData> | null>(null);
@@ -87,7 +90,6 @@ const LangGraphViewPageContent: React.FC = () => {
     }
   }, [rfNodes, fitView, executionStatus]); 
 
-
   const handleExecuteGraph = useCallback(() => {
     if (!graphId || !graphDefinition) {
       Modal.error({ title: 'Error', content: 'Graph definition not loaded.' });
@@ -96,7 +98,9 @@ const LangGraphViewPageContent: React.FC = () => {
     if (executionStatus === 'running' || executionStatus === 'connecting' || executionStatus === 'starting') {
       Modal.warn({ title: 'In Progress', content: 'Graph is already running or attempting to connect.' });
       return;
-    }    let parsedArgs: Record<string, any> = {};
+    }
+    
+    let parsedArgs: Record<string, any> = {};
     try {
       parsedArgs = JSON.parse(initialArgsJson);
     } catch (e) {
@@ -112,6 +116,7 @@ const LangGraphViewPageContent: React.FC = () => {
       executionOptions.simulation_delay_ms = delayMs;
     }
 
+    console.log('[LangGraphViewPage] Executing graph with options:', executionOptions);
     connectAndExecute(graphId, executionOptions);
   }, [graphId, graphDefinition, initialArgsJson, connectAndExecute, executionStatus, simulateDelay, delayMs]);
 
@@ -161,7 +166,7 @@ const LangGraphViewPageContent: React.FC = () => {
 
       return {
         ...edge,
-        animated: isTraversed && (executionStatus === 'running' || executionStatus === 'starting'),
+        animated: isTraversed && ['running', 'starting'].includes(executionStatus as string),
         data: { ...data, status: isTraversed ? 'traversed' : 'idle' } as ReactFlowEdgeData,
       };
     });
@@ -237,56 +242,57 @@ const LangGraphViewPageContent: React.FC = () => {
         }
         variant="borderless"
         style={{ marginBottom: '16px' }}
-      >        {graphDefinition.description && <Paragraph type="secondary">{graphDefinition.description}</Paragraph>}        
-        <Row gutter={16} align="bottom" style={{ marginBottom: '16px' }}>
-          <Col flex="auto">
-            <Text strong>Initial Arguments (JSON):</Text>
-            <TextArea
-              rows={3}
-              value={initialArgsJson}
-              onChange={(e) => setInitialArgsJson(e.target.value)}
-              placeholder='e.g., {"input": "User query here..."}'
-              disabled={executionStatus === 'running' || executionStatus === 'starting'}
-              style={{ fontFamily: 'monospace', fontSize: '12px' }}
-            />
-          </Col>
-        </Row>
+      >
+        {graphDefinition.description && <Paragraph type="secondary">{graphDefinition.description}</Paragraph>}
         
-        {/* Simulation Delay Row */}
-        <Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
-          <Col>
-            <Checkbox
-              checked={simulateDelay}
-              onChange={(e) => setSimulateDelay(e.target.checked)}
-              disabled={executionStatus === 'running' || executionStatus === 'starting'}
-            >
-              Simulate Node Delay
-            </Checkbox>
-          </Col>
-          <Col>
-            <InputNumber
-              min={100}
-              max={10000}
-              step={100}
-              value={delayMs}
-              onChange={(value) => setDelayMs(value || 100)}
-              disabled={!simulateDelay || executionStatus === 'running' || executionStatus === 'starting'}
-              addonAfter="ms"
-            />
-          </Col>
-        </Row>          <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {executionStatus !== 'running' && executionStatus !== 'starting' ? (
+        {/* Replace Form with div */}
+        <div>
+          <Row gutter={16} align="bottom" style={{ marginBottom: '16px' }}>
+            <Col flex="auto">
+              <Text strong>Initial Arguments (JSON):</Text>
+              <TextArea
+                rows={3}
+                value={initialArgsJson}
+                onChange={(e) => setInitialArgsJson(e.target.value)}
+                placeholder='e.g., {"input": "User query here..."}'
+                disabled={executionStatus === 'running' || executionStatus === 'starting'}
+                style={{ fontFamily: 'monospace', fontSize: '12px' }}
+              />
+            </Col>
+          </Row>
+          
+          {/* Simulation Delay Row */}
+          <Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
+            <Col>
+              <Checkbox
+                checked={simulateDelay}
+                onChange={(e) => setSimulateDelay(e.target.checked)}
+                disabled={executionStatus === 'running' || executionStatus === 'starting'}
+              >
+                Simulate Node Delay
+              </Checkbox>
+            </Col>
+            <Col>
+              <InputNumber
+                min={100}
+                max={10000}
+                step={100}
+                value={delayMs}
+                onChange={(value) => setDelayMs(value || 100)}
+                disabled={!simulateDelay || executionStatus === 'running' || executionStatus === 'starting'}
+                addonAfter="ms"
+              />
+            </Col>
+          </Row>
+            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {!['running', 'starting'].includes(executionStatus) ? (
               <Tooltip title="Start graph execution">
                 <Button
                   type="primary"
-                  htmlType="button"
                   icon={<PlayCircleOutlined />}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleExecuteGraph();
-                  }}
-                  loading={executionStatus === 'connecting' || executionStatus === 'starting'}
-                  disabled={!checkPermission('langgraph:execute') || executionStatus === 'running' || executionStatus === 'starting' || executionStatus === 'connecting'}
+                  onClick={handleExecuteGraph}
+                  loading={executionStatus === 'connecting'}
+                  disabled={!checkPermission('langgraph:execute') || ['running', 'starting', 'connecting'].includes(executionStatus)}
                 >
                   Execute
                 </Button>
@@ -295,53 +301,49 @@ const LangGraphViewPageContent: React.FC = () => {
               <Tooltip title="Stop graph execution">
                 <Button
                   type="default"
-                  htmlType="button"
                   danger
                   icon={<StopOutlined />}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleStopExecution();
-                  }}
-                  disabled={!(executionStatus === 'running' || executionStatus === 'starting')}
+                  onClick={handleStopExecution}
+                  disabled={!['running', 'starting'].includes(executionStatus)}
                 >
                   Stop
                 </Button>
               </Tooltip>
             )}
               <Tooltip title="Reload graph definition and reset layout">
-                <Button
-                    htmlType="button"
-                    icon={<ReloadOutlined />}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        disconnect(); 
-                        if(graphId) getGraphDefinition(graphId).then(def => def && setGraphDefinition(def));
-                    }}
-                    disabled={isLoadingDefinition || isLoadingLayout}
-                >
-                    Reload Graph
-                </Button>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => {
+                  disconnect(); 
+                  if(graphId) getGraphDefinition(graphId).then(def => def && setGraphDefinition(def));
+                }}
+                disabled={isLoadingDefinition || isLoadingLayout}
+              >
+                Reload Graph
+              </Button>
             </Tooltip>
             
             <Text>Execution Status: <Tag color={
-                executionStatus === 'running' || executionStatus === 'starting' ? 'blue' :
-                executionStatus === 'completed' ? 'green' :
-                executionStatus === 'error' ? 'red' :
-                executionStatus === 'connecting' ? 'geekblue' :
-                'default'
+              ['running', 'starting'].includes(executionStatus as string) ? 'blue' :
+              executionStatus === 'completed' ? 'green' :
+              executionStatus === 'error' ? 'red' :
+              executionStatus === 'connecting' ? 'geekblue' :
+              'default'
             }>{executionStatus.toUpperCase()}</Tag></Text>
             {currentExecutionId && <Text type="secondary" style={{fontSize: '0.8em'}}>Run ID: <Text copyable code style={{fontSize: '1em'}}>{currentExecutionId}</Text></Text>}
+          </div>
+          
+          {runnerError && <Alert message="Connection Error" description={runnerError} type="error" showIcon style={{marginTop: '8px'}} />}
+          {executionGraphError && (
+            <Alert
+              message={`Graph Execution Error (Node: ${executionGraphError.nodeId || 'Unknown'})`}
+              description={executionGraphError.message + (executionGraphError.details ? ` | Details: ${executionGraphError.details}` : '')}
+              type="error"
+              showIcon
+              style={{marginTop: '8px'}}
+            />
+          )}
         </div>
-        {runnerError && <Alert message="Connection Error" description={runnerError} type="error" showIcon style={{marginTop: '8px'}} />}
-        {executionGraphError && (
-          <Alert
-            message={`Graph Execution Error (Node: ${executionGraphError.nodeId || 'Unknown'})`}
-            description={executionGraphError.message + (executionGraphError.details ? ` | Details: ${executionGraphError.details}` : '')}
-            type="error"
-            showIcon
-            style={{marginTop: '8px'}}
-          />
-        )}
       </Card>
 
       <div style={{ display: 'flex', flexGrow: 1, height: '100%', overflow: 'hidden' }}>
