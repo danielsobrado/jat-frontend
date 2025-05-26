@@ -3,24 +3,23 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 // Import ReactFlowProvider and ensure useReactFlow is imported
-import { useReactFlow, ReactFlowProvider, Node, Edge, NodeMouseHandler, EdgeMouseHandler } from 'reactflow'; // Removed Connection
+import { useReactFlow, ReactFlowProvider, Node, Edge, NodeMouseHandler, EdgeMouseHandler } from 'reactflow'; 
 import { Button, Input, Card, Spin, Alert, Typography, Tooltip, Modal, Row, Col, Tag, Checkbox, InputNumber } from 'antd';
 import { PlayCircleOutlined, StopOutlined, EditOutlined, ReloadOutlined, ShareAltOutlined } from '@ant-design/icons';
 
 import { useAuth } from '../../context/AuthContext'; 
 import { useLangGraphDefinitions } from '../hooks/useLangGraphDefinitions';
-import { useLangGraphSSERunner } from '../hooks/useLangGraphSSERunner'; // Updated import
 import { useReactFlowGraphAdapter } from '../hooks/useReactFlowGraphAdapter';
 import { FrontendGraphDef, ReactFlowNodeData, ReactFlowEdgeData, ExecuteGraphRequestFE } from '../types/langgraph';
 import LangGraphCanvas from '../components/LangGraphCanvas';
 import NodeInspectorPanel from '../components/NodeInspectorPanel';
+import { useLangGraphRunner } from '../hooks/useLangGraphRunner';
+import { TransportSelector } from '../components/TransportSelector';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 // Using direct string comparisons for execution status checks
-
-// Renamed the original component to be wrapped by the Provider
 const LangGraphViewPageContent: React.FC = () => {
   const { graphId } = useParams<{ graphId: string }>();
   const navigate = useNavigate();
@@ -46,7 +45,12 @@ const LangGraphViewPageContent: React.FC = () => {
     currentExecutionId,
     error, 
     graphError, 
-  } = useLangGraphSSERunner('/v1');
+    currentTransport,
+    setTransport
+  }  = useLangGraphRunner({
+    transport: 'http-stream', // Optional: override default
+    baseUrl: '/api/v1/lg-vis',
+  });
 
   const [initialArgsJson, setInitialArgsJson] = useState<string>('{}');
   const [selectedElement, setSelectedElement] = useState<Node<ReactFlowNodeData> | Edge<ReactFlowEdgeData> | null>(null);
@@ -89,7 +93,7 @@ const LangGraphViewPageContent: React.FC = () => {
       Modal.error({ title: 'Error', content: 'Graph definition not loaded.' });
       return;
     }
-    // Removed 'starting' from comparison as it's not in GraphExecutionStatus
+   
     if (status === 'running' || status === 'connecting') { 
       Modal.warn({ title: 'In Progress', content: 'Graph is already running or attempting to connect.' });
       return;
@@ -144,7 +148,7 @@ const LangGraphViewPageContent: React.FC = () => {
     return rfNodes.map(node => {
       const graphNodeState: ReactFlowNodeData['status'] =
                              currentGraphState.activeNodeIds.has(node.id) ? 'running' :
-                             currentGraphState.completedNodeIds.has(node.id) ? 'success' : // Changed 'completed' to 'success'
+                             currentGraphState.completedNodeIds.has(node.id) ? 'success' : 
                              currentGraphState.errorNodeIds.has(node.id) ? 'error' : 
                              'idle';
       const lastOutput = currentGraphState.lastOutputByNode[node.id];
@@ -246,43 +250,22 @@ const LangGraphViewPageContent: React.FC = () => {
                 value={initialArgsJson}
                 onChange={(e) => setInitialArgsJson(e.target.value)}
                 placeholder='e.g., {"input": "User query here..."}'
-                disabled={status === 'running' || status === 'connecting'} // Removed 'starting'
+                disabled={status === 'running' || status === 'connecting'} 
                 style={{ fontFamily: 'monospace', fontSize: '12px' }}
               />
             </Col>
           </Row>
           
           <Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
-            <Col>
-              <Checkbox
-                checked={simulateDelay}
-                onChange={(e) => setSimulateDelay(e.target.checked)}
-                disabled={status === 'running' || status === 'connecting'} // Removed 'starting'
-              >
-                Simulate Node Delay
-              </Checkbox>
-            </Col>
-            <Col>
-              <InputNumber
-                min={100}
-                max={10000}
-                step={100}
-                value={delayMs}
-                onChange={(value) => setDelayMs(value || 100)}
-                disabled={!simulateDelay || status === 'running' || status === 'connecting'} // Removed 'starting'
-                addonAfter="ms"
-              />
-            </Col>
-          </Row>
-            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {!['running', 'connecting'].includes(status) ? ( // Removed 'starting'
+                        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {!['running', 'connecting'].includes(status) ? ( 
               <Tooltip title="Start graph execution">
                 <Button
                   type="primary"
                   icon={<PlayCircleOutlined />}
                   onClick={handleExecuteGraph}
                   loading={status === 'connecting'}
-                  disabled={!checkPermission('langgraph:execute') || ['running', 'connecting'].includes(status)} // Removed 'starting'
+                  disabled={!checkPermission('langgraph:execute') || ['running', 'connecting'].includes(status)} 
                 >
                   Execute
                 </Button>
@@ -294,7 +277,7 @@ const LangGraphViewPageContent: React.FC = () => {
                   danger
                   icon={<StopOutlined />}
                   onClick={handleStopExecution} // Ensure this function correctly stops SSE if possible
-                  disabled={!['running'].includes(status)} // Removed 'starting', only 'running' makes sense for stop
+                  disabled={!['running'].includes(status)} 
                 >
                   Stop
                 </Button>
@@ -314,7 +297,7 @@ const LangGraphViewPageContent: React.FC = () => {
             </Tooltip>
             
             <Text>Execution Status: <Tag color={
-              status === 'running' ? 'blue' : // Removed 'starting'
+              status === 'running' ? 'blue' : 
               status === 'completed' ? 'green' :
               status === 'error' ? 'red' :
               status === 'connecting' ? 'geekblue' :
@@ -333,6 +316,33 @@ const LangGraphViewPageContent: React.FC = () => {
               style={{marginTop: '8px'}}
             />
           )}
+
+            <TransportSelector
+              currentTransport={currentTransport}
+              onTransportChange={setTransport}
+              disabled={['running', 'connecting'].includes(status)}
+            />
+            <Col>
+              <Checkbox
+                checked={simulateDelay}
+                onChange={(e) => setSimulateDelay(e.target.checked)}
+                disabled={status === 'running' || status === 'connecting'} 
+              >
+                Simulate Node Delay
+              </Checkbox>
+            </Col>
+            <Col>
+              <InputNumber
+                min={100}
+                max={10000}
+                step={100}
+                value={delayMs}
+                onChange={(value) => setDelayMs(value || 100)}
+                disabled={!simulateDelay || status === 'running' || status === 'connecting'} 
+                addonAfter="ms"
+              />
+            </Col>
+          </Row>
         </div>
       </Card>
 
@@ -366,7 +376,7 @@ const LangGraphViewPageContent: React.FC = () => {
   );
 };
 
-// New wrapper component that provides the ReactFlowProvider
+// Wrapper component that provides the ReactFlowProvider
 const LangGraphViewPage: React.FC = () => {
   return (
     <ReactFlowProvider>
