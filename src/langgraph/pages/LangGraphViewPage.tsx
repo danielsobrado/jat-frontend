@@ -256,72 +256,65 @@ const LangGraphViewPageContent: React.FC = () => {
             </Col>
           </Row>
           
+          {/* Unified controls row */}
           <Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
-                        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {!['running', 'connecting'].includes(status) ? ( 
-              <Tooltip title="Start graph execution">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  onClick={handleExecuteGraph}
-                  loading={status === 'connecting'}
-                  disabled={!checkPermission('langgraph:execute') || ['running', 'connecting'].includes(status)} 
-                >
-                  Execute
-                </Button>
-              </Tooltip>
-            ) : (
-              <Tooltip title="Stop graph execution (Note: SSE stop might be server-side or client-side navigation)">
-                <Button
-                  type="default"
-                  danger
-                  icon={<StopOutlined />}
-                  onClick={handleStopExecution} // Ensure this function correctly stops SSE if possible
-                  disabled={!['running'].includes(status)} 
-                >
-                  Stop
-                </Button>
-              </Tooltip>
-            )}
-              <Tooltip title="Reload graph definition and reset layout">
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={() => {
-                  // disconnect?.(); // Optional: disconnect before reloading
-                  if(graphId) getGraphDefinition(graphId).then(def => def && setGraphDefinition(def));
-                }}
-                disabled={isLoadingDefinition || isLoadingLayout}
-              >
-                Reload Graph
-              </Button>
-            </Tooltip>
-            
-            <Text>Execution Status: <Tag color={
-              status === 'running' ? 'blue' : 
-              status === 'completed' ? 'green' :
-              status === 'error' ? 'red' :
-              status === 'connecting' ? 'geekblue' :
-              'default'
-            }>{status.toUpperCase()}</Tag></Text>
-            {currentExecutionId && <Text type="secondary" style={{fontSize: '0.8em'}}>Run ID: <Text copyable code style={{fontSize: '1em'}}>{currentExecutionId}</Text></Text>}
-          </div>
-          
-          {error && <Alert message="Connection Error" description={error} type="error" showIcon style={{marginTop: '8px'}} />}
-          {graphError && (
-            <Alert
-              message={`Graph Execution Error (Node: ${graphError.nodeId || 'N/A'})`}
-              description={graphError.message + (graphError.details ? ` | Details: ${graphError.details}` : '')}
-              type="error"
-              showIcon
-              style={{marginTop: '8px'}}
-            />
-          )}
-
-            <TransportSelector
-              currentTransport={currentTransport}
-              onTransportChange={setTransport}
-              disabled={['running', 'connecting'].includes(status)}
-            />
+            <Col>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {!['running', 'connecting'].includes(status) ? ( 
+                  <Tooltip title="Start graph execution">
+                    <Button
+                      type="primary"
+                      icon={<PlayCircleOutlined />}
+                      onClick={handleExecuteGraph}
+                      loading={status === 'connecting'}
+                      disabled={!checkPermission('langgraph:execute') || ['running', 'connecting'].includes(status)} 
+                    >
+                      Execute
+                    </Button>
+                  </Tooltip>
+                ) : (
+                  <Tooltip title="Stop graph execution (Note: SSE stop might be server-side or client-side navigation)">
+                    <Button
+                      type="default"
+                      danger
+                      icon={<StopOutlined />}
+                      onClick={handleStopExecution} // Ensure this function correctly stops SSE if possible
+                      disabled={!['running'].includes(status)} 
+                    >
+                      Stop
+                    </Button>
+                  </Tooltip>
+                )}
+                <Tooltip title="Reload graph definition and reset layout">
+                  <Button
+                    icon={<ReloadOutlined />}
+                    onClick={() => {
+                      // disconnect?.(); // Optional: disconnect before reloading
+                      if(graphId) getGraphDefinition(graphId).then(def => def && setGraphDefinition(def));
+                    }}
+                    disabled={isLoadingDefinition || isLoadingLayout}
+                  >
+                    Reload Graph
+                  </Button>
+                </Tooltip>
+                
+                <Text>Execution Status: <Tag color={
+                  status === 'running' ? 'blue' : 
+                  status === 'completed' ? 'green' :
+                  status === 'error' ? 'red' :
+                  status === 'connecting' ? 'geekblue' :
+                  'default'
+                }>{status.toUpperCase()}</Tag></Text>
+                {currentExecutionId && <Text type="secondary" style={{fontSize: '0.8em'}}>Run ID: <Text copyable code style={{fontSize: '1em'}}>{currentExecutionId}</Text></Text>}
+              </div>
+            </Col>
+            <Col>
+              <TransportSelector
+                currentTransport={currentTransport}
+                onTransportChange={setTransport}
+                disabled={['running', 'connecting'].includes(status)}
+              />
+            </Col>
             <Col>
               <Checkbox
                 checked={simulateDelay}
@@ -343,6 +336,17 @@ const LangGraphViewPageContent: React.FC = () => {
               />
             </Col>
           </Row>
+          
+          {error && <Alert message="Connection Error" description={error} type="error" showIcon style={{marginTop: '8px'}} />}
+          {graphError && (
+            <Alert
+              message={`Graph Execution Error (Node: ${graphError.nodeId || 'N/A'})`}
+              description={graphError.message + (graphError.details ? ` | Details: ${graphError.details}` : '')}
+              type="error"
+              showIcon
+              style={{marginTop: '8px'}}
+            />
+          )}
         </div>
       </Card>
 
