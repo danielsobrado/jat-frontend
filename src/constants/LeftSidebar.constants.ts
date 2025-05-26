@@ -12,6 +12,7 @@ import {
   SettingOutlined,      // Settings
   LogoutOutlined,       // Logout
   PlusOutlined,         // Needed for sub-items like "Create Graph"
+  SolutionOutlined,     // ServiceNow (SNOW) icon
   // UnorderedListOutlined, // Example for sub-item, if needed
 } from '@ant-design/icons';
 import { LeftSidebarItem } from '../components/Sidebar/LeftSidebar.interface';
@@ -23,6 +24,9 @@ export const SIDEBAR_NESTED_KEYS: Record<string, string> = {
   [SidebarItemEnum.LANGGRAPH_VIEW]: SidebarItemEnum.LANGGRAPH_LIST,
   [SidebarItemEnum.LANGGRAPH_CREATE]: SidebarItemEnum.LANGGRAPH_LIST,
   [SidebarItemEnum.LANGGRAPH_EDIT]: SidebarItemEnum.LANGGRAPH_LIST, // If you add edit
+  // Add SNOW routes
+  [SidebarItemEnum.SNOW_ANALYZE]: SidebarItemEnum.SNOW_BASE,
+  [SidebarItemEnum.SNOW_HISTORY]: SidebarItemEnum.SNOW_BASE,
   // Add your existing nested keys for admin, history etc.
   '/admin/users/edit': SidebarItemEnum.ADMIN_USERS, // Assuming you might have edit sub-routes
   '/admin/roles/edit': SidebarItemEnum.ADMIN_ROLES,
@@ -114,6 +118,35 @@ export const LANGGRAPH_VIS_SIDEBAR_ITEM: LeftSidebarItem = {
       },
     ]
 };
+
+// ServiceNow (SNOW) sidebar item
+export const SNOW_SIDEBAR_ITEM: LeftSidebarItem = {
+  key: SidebarItemEnum.SNOW_BASE,
+  title: 'ServiceNow',
+  icon: SolutionOutlined,
+  dataTestId: 'snow-sidebar-item',
+  redirect_url: SidebarItemEnum.SNOW_ANALYZE,
+  requiredPermission: 'snow:analyze',
+  children: [
+    {
+      key: SidebarItemEnum.SNOW_ANALYZE,
+      title: 'Analyze',
+      icon: SolutionOutlined,
+      dataTestId: 'snow-analyze-sidebar-item',
+      redirect_url: SidebarItemEnum.SNOW_ANALYZE,
+      requiredPermission: 'snow:analyze',
+    },
+    {
+      key: SidebarItemEnum.SNOW_HISTORY,
+      title: 'History',
+      icon: HistoryOutlined,
+      dataTestId: 'snow-history-sidebar-item',
+      redirect_url: SidebarItemEnum.SNOW_HISTORY,
+      requiredPermission: 'snow:history:view',
+    },
+  ],
+};
+
 
 export const ADMIN_SIDEBAR_ITEMS: LeftSidebarItem[] = [
     {

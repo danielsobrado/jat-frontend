@@ -41,6 +41,13 @@ import { BatchClassificationService } from './batch-classification.service';
 import { SystemService } from './system.service';
 import { ConfigService } from './config.service';
 import { RagService } from './rag.service';
+import { SnowService } from './snow.service'; // Import the new SnowService
+import {
+  SnowAnalyzeRequestFE,
+  SnowAnalyzeResponseFE,
+  SnowHistoryRequestParamsFE,
+  SnowHistoryPageFE,
+} from '../snow/types/snow.types'; // Import SNOW types
 
 export class WebApiClient implements ApiClient {
   private core: ApiClientCore;
@@ -53,6 +60,7 @@ export class WebApiClient implements ApiClient {
   private systemService: SystemService;
   private configService: ConfigService;
   private ragService: RagService;
+  private snowService: SnowService; // Add SnowService instance
 
   constructor() {
     this.core = new ApiClientCore();
@@ -65,6 +73,7 @@ export class WebApiClient implements ApiClient {
     this.systemService = new SystemService(this.core);
     this.configService = new ConfigService(this.core);
     this.ragService = new RagService(this.core);
+    this.snowService = new SnowService(this.core); // Initialize SnowService
   }
 
   // Add generic HTTP methods delegating to ApiClientCore
@@ -146,6 +155,19 @@ export class WebApiClient implements ApiClient {
   async deleteRagInfo(id: string): Promise<void> { return this.ragService.deleteRagInfo(id); }
   async getRagInfo(id: string): Promise<RagInfoItem> { return this.ragService.getRagInfo(id); } // Keep for compatibility
   async queryRag(question: string): Promise<any> { return this.ragService.queryRag(question); }
+
+  // --- ServiceNow (SNOW) Analysis Methods ---
+  async analyzeSnowTicket(ticketData: SnowAnalyzeRequestFE): Promise<SnowAnalyzeResponseFE> {
+    return this.snowService.analyzeTicket(ticketData);
+  }
+
+  async getSnowHistory(params: SnowHistoryRequestParamsFE): Promise<SnowHistoryPageFE> {
+    return this.snowService.getHistory(params);
+  }
+
+  async deleteSnowHistory(id: string): Promise<void> {
+    return this.snowService.deleteHistory(id);
+  }
 
   // For backward compatibility - fetch auth config (will eventually be removed)
   async fetchAuthConfig(): Promise<void> {

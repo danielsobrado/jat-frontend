@@ -15,6 +15,11 @@ export enum SidebarItem {
   LANGGRAPH_CREATE = '/langgraph/create',
   LANGGRAPH_EDIT = '/langgraph/edit', // If you create an edit page
 
+  // --- ServiceNow (SNOW) ---
+  SNOW_BASE = '/snow', // A base key if the parent item is not directly navigable
+  SNOW_ANALYZE = '/snow/analyze',
+  SNOW_HISTORY = '/snow/history',
+
   // Admin ---
   ADMIN_USERS = '/admin/users',
   ADMIN_ROLES = '/admin/roles',

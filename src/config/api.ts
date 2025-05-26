@@ -64,6 +64,12 @@ export const API_ENDPOINTS = {
   chat: { 
     completions: '/chat/completions', 
   },
+  // --- ServiceNow (SNOW) Endpoints ---
+  snow: {
+    analyze: '/snow/analyze',         // POST
+    history: '/snow/history',         // GET (list), DELETE (with /:id)
+    historyItem: '/snow/history/{id}' // DELETE (specific item)
+  },
 };
 
 export const formatEndpoint = (endpoint: string, params?: Record<string, string>): string => {

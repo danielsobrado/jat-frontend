@@ -13,6 +13,7 @@
     "axios": "^1.8.4",
     "classnames": "^2.5.1",
     "dagre": "^0.8.5",
+    "dayjs": "^1.11.13",
     "file-saver": "^2.0.5",
     "GovIlm-classifier": "file:",
     "lodash": "^4.17.21",

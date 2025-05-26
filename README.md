@@ -2,6 +2,8 @@
 
 This directory contains the reusable React components that make up the user interface of the GovIlm Classifier application. Components are organized by feature area where applicable.
 
+> **Status Types Documentation**: This project contains multiple systems with different status types. For details about the status types used in both the Categorization and ServiceNow systems, see [docs/STATUS_TYPES.md](./docs/STATUS_TYPES.md).
+
 ## Core Layout & Navigation
 
 *   **`Layout/PageLayout.tsx`**: The main application shell. It renders the fixed header, the collapsible `LeftSidebar`, and the main content area (`<Outlet />`). It manages the sidebar's collapsed/expanded state.
@@ -86,8 +88,14 @@ Helper hooks encapsulate data fetching, state management, and logic for specific
 *   Tests are implemented using React Testing Library (`@testing-library/react`) and Jest.
 *   Example: `__tests__/ConfigValue.test.tsx` covers various scenarios for the `ConfigValue` component, including different data types, masking, and styling.
 
+## Documentation & Helper Components
+
+*   **`StatusTypeGuide.tsx`**: A documentation component that explains the different status types used in the Categorization and ServiceNow systems.
+*   **`StatusTypeTooltip.tsx`**: A simple tooltip component that can be integrated into any UI to provide quick information about the status types.
+
 ## Development Notes
 
 *   Components generally follow a pattern of having a main "Tab" or "Page" component that uses hooks for logic and integrates sub-components for display (Table, Filters, Modals).
 *   Permissions (fetched via `useAuth`) are checked within components to enable/disable actions or show/hide UI elements.
 *   Styling leverages Tailwind CSS utility classes (defined in `src/index.css`) and component-specific CSS files (e.g., `left-sidebar.css`). Ant Design (`antd`) components are used for tables, modals, forms, etc., providing a consistent look and feel.
+*   Status types are consistently handled using utility functions in `src/utils/statusUtils.ts`.

@@ -6,6 +6,7 @@ import { ManualClassificationModal } from './ManualClassificationModal';
 import { RerunStatusModal } from './RerunStatusModal';
 import { ClassificationDetailsModal } from './ClassificationDetailsModal';
 import { formatDate } from '../utils/dateFormat';
+import { isInformationalError } from '../utils/statusUtils';
 import { useAuth } from '../context/AuthContext'; // Import useAuth hook
 
 interface HistoryTabProps {
@@ -49,22 +50,8 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({ apiClient }) => {
   const [endDate, setEndDate] = useState<string>(() => {
     return new Date().toISOString().split('T')[0];
   });
-
-  const informationalErrorMessages = [
-    "Classification failed to determine required levels",
-    "Classification failed to determine required levels.",
-    "No matching category found at this level",
-    "Failed to classify at this level",
-    "Classification is partial; some levels may be missing or invalid.",
-    "Classification is partial.", // Matches backend's informational message for partial
-    "Classification failed.",   // Matches backend's informational message for failed
-  ];
-
-  const isInformationalError = (errorMessage?: string): boolean => {
-    if (!errorMessage) return false;
-    const lowerMessage = errorMessage.toLowerCase();
-    return informationalErrorMessages.some(msg => lowerMessage.includes(msg.toLowerCase()));
-  };
+  // Using isInformationalError function from statusUtils.ts
+  // This replaced the local informationalErrorMessages array and isInformationalError function
 
   useEffect(() => {
     const loadSystems = async () => {

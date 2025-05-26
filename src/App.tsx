@@ -10,8 +10,8 @@ import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
 import RagInfoPage from './pages/RagInfoPage';
 import LoginPage from './pages/LoginPage';
-import UserManagementPage from './pages/UserManagementPage'; // <<< Import Admin Pages
-import RoleManagementPage from './pages/RoleManagementPage';   // <<< Import Admin Pages
+import UserManagementPage from './pages/UserManagementPage'; 
+import RoleManagementPage from './pages/RoleManagementPage';   
 import './App.css';
 import { Spin } from 'antd'; // For loading indicator
 import ChatPage from './pages/ChatPage';
@@ -21,6 +21,11 @@ import LangGraphListPage from './langgraph/pages/LangGraphListPage';
 import LangGraphViewPage from './langgraph/pages/LangGraphViewPage';
 import LangGraphCreatePage from './langgraph/pages/LangGraphCreatePage';
 import LangGraphEditPage from './langgraph/pages/LangGraphEditPage';
+
+// SNOW imports
+import SnowAnalyzePage from './snow/pages/SnowAnalyzePage'; 
+import SnowHistoryPage from './snow/pages/SnowHistoryPage'; 
+import { SolutionOutlined } from '@ant-design/icons'; // Example icon, choose/import appropriately
 
 // --- Protected Route Component ---
 interface ProtectedRouteProps {
@@ -150,6 +155,24 @@ function App() {
               <Route path="/langgraph/view/:graphId" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('langgraph:view')}><LangGraphViewPage /></ProtectedRoute>} />
               <Route path="/langgraph/create" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('langgraph:create')}><LangGraphCreatePage /></ProtectedRoute>} />
               <Route path="/langgraph/edit/:graphId" element={<ProtectedRoute isAllowed={!authEnabled || checkPermission('langgraph:edit')}><LangGraphEditPage /></ProtectedRoute>} />
+
+              {/* ServiceNow (SNOW) Routes */}
+              <Route
+                path="/snow/analyze"
+                element={
+                  <ProtectedRoute isAllowed={!authEnabled || checkPermission('snow:analyze')}>
+                    <SnowAnalyzePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/snow/history"
+                element={
+                  <ProtectedRoute isAllowed={!authEnabled || checkPermission('snow:history:view')}>
+                    <SnowHistoryPage />
+                  </ProtectedRoute>
+                }
+              />
 
               <Route path="*" element={<Navigate to="/test" replace />} />
         </Route>

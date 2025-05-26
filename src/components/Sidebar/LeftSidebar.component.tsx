@@ -15,6 +15,7 @@ import {
   CHAT_SIDEBAR_ITEM,
   ADMIN_SIDEBAR_ITEMS,
   LANGGRAPH_VIS_SIDEBAR_ITEM, // Import LangGraph item
+  SNOW_SIDEBAR_ITEM, // Import SNOW sidebar item
 } from '../../constants/LeftSidebar.constants';
 import { SidebarItem as SidebarItemEnum } from '../../enum/sidebar.enum';
 import { LeftSidebarItem as LeftSidebarItemType, LeftSidebarProps } from './LeftSidebar.interface';
@@ -90,7 +91,11 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
     // Insert LangGraph item
     items.splice(insertionPoint, 0, LANGGRAPH_VIS_SIDEBAR_ITEM);
-    // insertionPoint++; // Not needed if LangGraph is the last dynamic item before admin items
+    insertionPoint++; // Move insertion point for next item
+    
+    // Insert ServiceNow (SNOW) item
+    items.splice(insertionPoint, 0, SNOW_SIDEBAR_ITEM);
+    // insertionPoint++; // Not needed if SNOW is the last dynamic item before admin items
 
     // Add Admin items (conditionally displayed based on permissions in the filter below)
     items = [...items, ...ADMIN_SIDEBAR_ITEMS];
