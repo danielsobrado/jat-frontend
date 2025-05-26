@@ -46,7 +46,8 @@ const LangGraphViewPageContent: React.FC = () => {
     error, 
     graphError, 
     currentTransport,
-    setTransport
+    setTransport,
+    disconnect, // <-- Add disconnect here
   }  = useLangGraphRunner({
     transport: 'http-stream', // Optional: override default
     baseUrl: '/api/v1/lg-vis',
@@ -119,9 +120,10 @@ const LangGraphViewPageContent: React.FC = () => {
   }, [graphId, graphDefinition, initialArgsJson, connectAndExecute, status, simulateDelay, delayMs]);
 
   const handleStopExecution = useCallback(() => {
-    // Call disconnect from useLangGraphSSERunner if available and needed
-    // disconnect?.(); 
-  }, []); // Add disconnect to dependency array if used
+    if (disconnect) {
+      disconnect(); // <-- Call disconnect
+    }
+  }, [disconnect]); // <-- Add disconnect to dependency array
 
   const onNodeClickHandler: NodeMouseHandler = useCallback((_event: React.MouseEvent, node: Node<ReactFlowNodeData>) => { // Prefixed event with _
     const enrichedNodeData: ReactFlowNodeData = {
@@ -188,7 +190,10 @@ const LangGraphViewPageContent: React.FC = () => {
   if (isLoadingDefinition) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 64px)' }}>
-        <Spin size="large" tip="Loading graph definition..." />
+        <Spin size="large" tip="Loading graph definition...">
+          {/* Added a placeholder div for Spin to wrap, can be adjusted if there's specific content to show while loading */}
+          <div style={{ width: '100%', height: '100px' }} />
+        </Spin>
       </div>
     );
   }
@@ -305,7 +310,7 @@ const LangGraphViewPageContent: React.FC = () => {
                   status === 'connecting' ? 'geekblue' :
                   'default'
                 }>{status.toUpperCase()}</Tag></Text>
-                {currentExecutionId && <Text type="secondary" style={{fontSize: '0.8em'}}>Run ID: <Text copyable code style={{fontSize: '1em'}}>{currentExecutionId}</Text></Text>}
+                {currentExecutionId && <Text type="secondary">Run ID: <Text copyable code style={{fontSize: '1em'}}>{currentExecutionId}</Text></Text>}
               </div>
             </Col>
             <Col>
@@ -354,7 +359,10 @@ const LangGraphViewPageContent: React.FC = () => {
         <div style={{ flexGrow: 1, height: '100%', position: 'relative' }}>
           {isLoadingLayout ? (
              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                <Spin size="large" tip="Applying graph layout..." />
+                <Spin size="large" tip="Applying graph layout...">
+                  {/* Added a placeholder div for Spin to wrap */}
+                  <div style={{ width: '100%', height: '100px' }} />
+                </Spin>
              </div>
           ) : errorLayout ? (
             <Alert message="Layout Error" description={errorLayout} type="error" showIcon />

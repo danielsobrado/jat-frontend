@@ -60,23 +60,44 @@ export class LangGraphSocketService {
     console.log('[LangGraphSocketService] Base WebSocket URL set to:', this.baseWsUrl);
   }  private getWebSocketUrl(): string {
     if (!this.graphId) {
-      throw new Error('Graph ID is not set for WebSocket connection.');
+      // Consider throwing an error or handling this case more robustly
+      console.error("[LangGraphSocketService] Graph ID is not set.");
+      throw new Error("Graph ID is not set for WebSocket connection.");
     }
     
-    // Path should match the backend WebSocket router configuration AND Vite proxy configuration
-    // From vite.config.ts: '/api/v1/lg-vis/ws' gets rewritten to '/v1/lg-vis/ws' for the backend
-    const wsPathPrefix = "/api/v1/lg-vis/ws/langgraph/graphs";
+    // Path should be relative to the baseWsUrl (which includes the API prefix like /api/v1/lg-vis)
+    // The backend WebSocket endpoint is typically mounted at something like /ws/langgraph/graphs/...
+    // relative to its own router prefix.
+    const wsPathPrefix = "/ws/langgraph/graphs"; // Changed from "/api/v1/lg-vis/ws/langgraph/graphs"
     
     console.log('[LangGraphSocketService] Creating WebSocket URL with baseWsUrl:', this.baseWsUrl);
+    console.log('[LangGraphSocketService] Using wsPathPrefix:', wsPathPrefix);
 
     let fullUrl: string;
-    if (this.executionId) {
+    // This 'else' branch is taken when WebSocketServiceAdapter generates a client-side executionId
+    if (this.executionId && !this.executionId.includes('/')) { 
+      // Assumes executionId is just an ID, not a path segment
       fullUrl = `${this.baseWsUrl}${wsPathPrefix}/${this.graphId}/execute/${this.executionId}`;
+    } else if (this.executionId && this.executionId.includes('/')) {
+      // This case would be if executionId itself is a pre-formed path segment from baseWsUrl
+      // e.g., if backend returned "/ws/langgraph/graphs/graphId/execute/execId"
+      // and baseWsUrl was just "ws://host:port"
+      // For now, assuming the client-generated executionId path is the primary one for this service.
+      // If executionId is a full path like /api/v1/lg-vis/ws/..., then baseWsUrl should be ws://host:port
+      // and this logic would need adjustment or clarification on what executionId contains.
+      // Based on current setup with WebSocketServiceAdapter, this branch is less likely.
+      fullUrl = `${this.baseWsUrl}${this.executionId.startsWith('/') ? '' : '/'}${this.executionId}`;
     } else {
-      fullUrl = `${this.baseWsUrl}${wsPathPrefix}/${this.graphId}/execute`;
+      // Fallback or error if executionId is expected but missing or in an unexpected format
+      // This path was originally for when executionId was not known.
+      // Given WebSocketServiceAdapter always generates one, this might indicate an issue.
+      console.warn('[LangGraphSocketService] executionId is null or in an unexpected format, constructing URL without it or with a placeholder.');
+      // Defaulting to the structure used when executionId is a simple ID.
+      // Consider if a different structure or error is more appropriate here.
+      fullUrl = `${this.baseWsUrl}${wsPathPrefix}/${this.graphId}/execute${this.executionId ? `/${this.executionId}` : ''}`;
     }
     
-    console.log('[LangGraphSocketService] WebSocket URL:', fullUrl);
+    console.log('[LangGraphSocketService] Constructed WebSocket URL:', fullUrl);
     return fullUrl;
   }
 
