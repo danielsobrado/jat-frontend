@@ -2,7 +2,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { message } from 'antd';
 import { ApiClient } from '../../api/types';
-import { SnowHistoryItemFE, SnowHistoryPageFE, SnowHistoryRequestParamsFE } from '../types/snow.types';
+import { SnowHistoryItemFE, SnowHistoryPageFE, SnowHistoryRequestParamsFE, SnowHistoryFiltersState } from '../types/snow.types';
+import _ from 'lodash'; // Import lodash for debounce
 
 export interface UseSnowHistoryResult {
   historyItems: SnowHistoryItemFE[];
@@ -11,13 +12,15 @@ export interface UseSnowHistoryResult {
   totalCount: number;
   currentPage: number;
   totalPages: number;
-  fetchHistory: (page: number, filters: SnowHistoryRequestParamsFE, cursor?: string) => Promise<void>;
   deleteHistoryItem: (id: string) => Promise<boolean>;
-  pageCursors: Record<number, string | undefined>; // Store cursor for each page number
-  setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
+  setCurrentPage: React.Dispatch<React.SetStateAction<number>>; // Expose setter for page
+  setFilters: React.Dispatch<React.SetStateAction<SnowHistoryFiltersState>>; // Expose setter for filters
+  filters: SnowHistoryFiltersState; // Expose current filters state for child components
+  refreshHistory: () => void; // New method to force a refresh of current page/filters
 }
 
 const PAGE_SIZE = 10;
+const DEBOUNCE_DELAY_MS = 500; // Delay for applying filters after input changes
 
 export function useSnowHistory(apiClient: ApiClient): UseSnowHistoryResult {
   const mountedRef = useRef(true);
@@ -28,39 +31,79 @@ export function useSnowHistory(apiClient: ApiClient): UseSnowHistoryResult {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [pageCursors, setPageCursors] = useState<Record<number, string | undefined>>({});
+  const [filters, setFilters] = useState<SnowHistoryFiltersState>({ // Filter state managed inside the hook
+    search: '',
+    startDate: null,
+    endDate: null,
+  });
 
-  const safeSetState = <T,>(setter: React.Dispatch<React.SetStateAction<T>>) => (value: T | ((prevState: T) => T)) => {
-    if (mountedRef.current) setter(value);
-  };
+  // Refs to hold the latest state values without being dependencies of callbacks
+  // This is the key to breaking the infinite loop.
+  const currentPageRef = useRef(currentPage);
+  const filtersRef = useRef(filters);
+  const pageCursorsRef = useRef(pageCursors);
 
-  const safeSetHistoryItems = safeSetState(setHistoryItems);
-  const safeSetLoading = safeSetState(setLoading);
-  const safeSetError = safeSetState(setError);
-  const safeSetTotalCount = safeSetState(setTotalCount);
-  const safeSetCurrentPage = safeSetState(setCurrentPage);
-  const safeSetTotalPages = safeSetState(setTotalPages);
-  const safeSetPageCursors = safeSetState(setPageCursors);
+  // Keep refs in sync with state. These effects run after every render.
+  useEffect(() => { currentPageRef.current = currentPage; }, [currentPage]);
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+  useEffect(() => { pageCursorsRef.current = pageCursors; }, [pageCursors]);
 
-  const fetchHistory = useCallback(async (page: number, filters: SnowHistoryRequestParamsFE, cursor?: string) => {
+  // Safe state setters (these functions themselves are stable memoized functions)
+  // We explicitly useCallback them to ensure their references are stable.
+  const safeSetHistoryItems = useCallback((value: SnowHistoryItemFE[] | ((prev: SnowHistoryItemFE[]) => SnowHistoryItemFE[])) => { if (mountedRef.current) setHistoryItems(value); }, []);
+  const safeSetLoading = useCallback((value: boolean | ((prev: boolean) => boolean)) => { if (mountedRef.current) setLoading(value); }, []);
+  const safeSetError = useCallback((value: string | null | ((prev: string | null) => string | null)) => { if (mountedRef.current) setError(value); }, []);
+  const safeSetTotalCount = useCallback((value: number | ((prev: number) => number)) => { if (mountedRef.current) setTotalCount(value); }, []);
+  const safeSetCurrentPage = useCallback((value: number | ((prev: number) => number)) => { if (mountedRef.current) setCurrentPage(value); }, []);
+  const safeSetTotalPages = useCallback((value: number | ((prev: number) => number)) => { if (mountedRef.current) setTotalPages(value); }, []);
+  const safeSetPageCursors = useCallback((value: Record<number, string | undefined> | ((prev: Record<number, string | undefined>) => Record<number, string | undefined>)) => { if (mountedRef.current) setPageCursors(value); }, []);
+  const safeSetFilters = useCallback((value: SnowHistoryFiltersState | ((prev: SnowHistoryFiltersState) => SnowHistoryFiltersState)) => { if (mountedRef.current) setFilters(value); }, []);
+
+
+  // Core data fetching logic. It reads current state values from refs.
+  // Its dependencies only include `apiClient` and the `safeSet` functions, which are stable.
+  // This callback itself does not recreate on every render unless `apiClient` changes.
+  const fetchHistoryData = useCallback(async () => {
     safeSetLoading(true);
     safeSetError(null);
     try {
+      const page = currentPageRef.current; // Get current page from ref
+      const currentFilters = filtersRef.current; // Get current filters from ref
+      const currentCursorsSnapshot = pageCursorsRef.current; // Get current cursors from ref
+
+      const actualCursor = page === 1 ? undefined : currentCursorsSnapshot[page - 1];
+
       const params: SnowHistoryRequestParamsFE = {
         limit: PAGE_SIZE,
-        cursor: page === 1 ? undefined : cursor, // Use cursor only if not page 1
-        ...filters,
+        cursor: actualCursor,
+        search: currentFilters.search || undefined,
+        startDate: currentFilters.startDate || undefined,
+        endDate: currentFilters.endDate || undefined,
       };
-      console.log('Fetching SNOW history with params:', params);
+      console.log('[useSnowHistory] Fetching SNOW history with params:', params);
       const result: SnowHistoryPageFE = await apiClient.getSnowHistory(params);
       
       safeSetHistoryItems(result.items || []);
       safeSetTotalCount(result.totalCount || 0);
       safeSetTotalPages(Math.ceil((result.totalCount || 0) / PAGE_SIZE) || 1);
-      safeSetCurrentPage(page);
 
-      if (result.nextCursor) {
-        safeSetPageCursors(prev => ({ ...prev, [page]: result.nextCursor }));
-      }
+      // Update pageCursors state. This will cause `pageCursors` state to update.
+      // And `pageCursorsRef.current` will update on next render.
+      safeSetPageCursors(prev => {
+          const newCursors = { ...prev };
+          if (result.nextCursor) {
+              newCursors[page] = result.nextCursor; // Store cursor for page+1
+          } else {
+              // If no nextCursor, this is the last page. Clear cursors for pages >= current page.
+              // This is safe as it doesn't affect previous pages' cursors.
+              for (let key in newCursors) {
+                  if (parseInt(key) >= page) { // Clear cursors for current page and beyond (to ensure fresh pagination if data shrinks)
+                      delete newCursors[key];
+                  }
+              }
+          }
+          return newCursors;
+      });
 
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to load SNOW analysis history.';
@@ -73,23 +116,46 @@ export function useSnowHistory(apiClient: ApiClient): UseSnowHistoryResult {
     } finally {
       safeSetLoading(false);
     }
-  }, [apiClient, safeSetLoading, safeSetError, safeSetHistoryItems, safeSetTotalCount, safeSetCurrentPage, safeSetTotalPages, safeSetPageCursors]);
+    // Dependencies list is stable:
+    // Only `apiClient` and the `safeSet` functions (which are `useCallback` memoized)
+  }, [apiClient, safeSetHistoryItems, safeSetLoading, safeSetError, safeSetTotalCount, safeSetTotalPages, safeSetPageCursors]);
 
+
+  // Debounced trigger for fetching history. It just calls `fetchHistoryData` directly.
+  // This callback is stable as its dependencies are stable.
+  const debouncedFetchHistory = useCallback(
+    _.debounce(() => {
+      fetchHistoryData(); // Call the stable fetch function
+    }, DEBOUNCE_DELAY_MS),
+    [fetchHistoryData] // Depends only on fetchHistoryData, which is stable
+  );
+
+  // Main useEffect: Triggers debounced data fetch when currentPage or filters change.
+  // This useEffect will only re-run when `currentPage` or `filters` actually change,
+  // because `debouncedFetchHistory` is a stable reference.
+  useEffect(() => {
+    console.log('[useSnowHistory] useEffect trigger: currentPage or filters changed. Loading page:', currentPage, 'Filters:', filters);
+    debouncedFetchHistory();
+
+    // Cleanup function for debounce
+    return () => {
+      debouncedFetchHistory.cancel();
+    };
+  }, [currentPage, filters, debouncedFetchHistory]); // Dependencies are `currentPage`, `filters`, and `debouncedFetchHistory` (which is stable)
+
+
+  // Delete history item. It triggers a refresh of the current view.
   const deleteHistoryItem = useCallback(async (id: string): Promise<boolean> => {
     safeSetLoading(true);
     safeSetError(null);
     try {
       await apiClient.deleteSnowHistory(id);
       message.success('History item deleted successfully.');
-      // Refresh current page or go to page 1 if current page becomes empty
-      const newTotal = totalCount - 1;
-      if (newTotal <= (currentPage - 1) * PAGE_SIZE && currentPage > 1) {
-        setCurrentPage(prev => prev - 1); // This will trigger fetch in useEffect
-      } else {
-        // Re-fetch current page, using the cursor for the current page's *previous* page
-        // (as that cursor leads to the current page). For page 1, cursor is undefined.
-        await fetchHistory(currentPage, {}, currentPage > 1 ? pageCursors[currentPage - 1] : undefined);
-      }
+      
+      // After delete, re-fetch the current page to refresh data.
+      // This will automatically handle pagination adjustments if the current page becomes empty.
+      fetchHistoryData(); // Call the stable fetch function
+      
       return true;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to delete history item.';
@@ -100,14 +166,21 @@ export function useSnowHistory(apiClient: ApiClient): UseSnowHistoryResult {
     } finally {
       safeSetLoading(false);
     }
-  }, [apiClient, fetchHistory, totalCount, currentPage, pageCursors, safeSetLoading, safeSetError]);
+  }, [apiClient, fetchHistoryData, safeSetLoading, safeSetError]);
 
+  // Method to force a refresh (e.g., for a "Refresh" button)
+  const refreshHistory = useCallback(() => {
+    fetchHistoryData(); // Call the stable fetch function
+  }, [fetchHistoryData]);
+
+  // Cleanup on unmount
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      debouncedFetchHistory.cancel(); // Cancel any pending debounced calls on unmount
     };
-  }, []);
+  }, [debouncedFetchHistory]); // Depends only on debouncedFetchHistory
 
   return {
     historyItems,
@@ -116,9 +189,10 @@ export function useSnowHistory(apiClient: ApiClient): UseSnowHistoryResult {
     totalCount,
     currentPage,
     totalPages,
-    fetchHistory,
     deleteHistoryItem,
-    pageCursors,
-    setCurrentPage: safeSetCurrentPage,
+    setCurrentPage: safeSetCurrentPage, // Expose direct setter for page
+    setFilters: safeSetFilters, // Expose direct setter for filters
+    filters, // Expose current filters state
+    refreshHistory, // Expose refresh function
   };
 }

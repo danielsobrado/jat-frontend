@@ -6,7 +6,10 @@ import { useSnowHistory } from '../hooks/useSnowHistory';
 import SnowHistoryTable from '../components/SnowHistoryTable';
 import SnowHistoryFilters from '../components/SnowHistoryFilters';
 import SnowAnalysisDetailsModal from '../components/SnowAnalysisDetailsModal';
-import { SnowHistoryItemFE, SnowHistoryFiltersState, SnowHistoryRequestParamsFE } from '../types/snow.types';
+import { SnowHistoryItemFE, SnowHistoryFiltersState } from '../types/snow.types';
+import { ReloadOutlined } from '@ant-design/icons'; // Import ReloadOutlined
+
+const PAGE_SIZE = 10; // Define the number of items per page
 
 const SnowHistoryPage: React.FC = () => {
   const { apiClient, checkPermission } = useAuth();
@@ -17,45 +20,28 @@ const SnowHistoryPage: React.FC = () => {
     totalCount,
     currentPage,
     totalPages,
-    fetchHistory,
     deleteHistoryItem,
-    pageCursors,
     setCurrentPage,
+    setFilters, // Get setFilters from hook
+    filters, // Get filters state from hook
+    refreshHistory, // Get refreshHistory from hook
   } = useSnowHistory(apiClient);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SnowHistoryItemFE | null>(null);
-  const [filters, setFilters] = useState<SnowHistoryFiltersState>({
-    search: '',
-    startDate: null,
-    endDate: null,
-  });
 
-  const handleFetchHistory = useCallback((page: number, currentFilters: SnowHistoryFiltersState) => {
-    const params: SnowHistoryRequestParamsFE = {
-      search: currentFilters.search || undefined,
-      startDate: currentFilters.startDate || undefined,
-      endDate: currentFilters.endDate || undefined,
-    };
-    const cursor = page === 1 ? undefined : pageCursors[page - 1];
-    fetchHistory(page, params, cursor);
-  }, [fetchHistory, pageCursors]);
-
-  useEffect(() => {
-    if (checkPermission('snow:history:view')) {
-      handleFetchHistory(currentPage, filters);
-    }
-  }, [currentPage, filters, checkPermission, handleFetchHistory]);
-
-
-  const handleFilterChange = (newFilters: SnowHistoryFiltersState) => {
+  // handleFilterChange now just updates filters in the hook.
+  // This will trigger the useSnowHistory hook's internal useEffect, which debounces the fetch.
+  const handleFilterChange = useCallback((newFilters: SnowHistoryFiltersState) => {
     setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page on filter change
-  };
+    setCurrentPage(1); // Always reset to page 1 on filter change
+  }, [setFilters, setCurrentPage]);
 
-  const handlePageChange = (page: number) => {
+  // handlePageChange directly updates currentPage in the hook.
+  // This will trigger the useSnowHistory hook's internal useEffect, which debounces the fetch.
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, [setCurrentPage]);
 
   const handleDelete = async (id: string) => {
     if (!checkPermission('snow:history:delete')) {
@@ -63,7 +49,7 @@ const SnowHistoryPage: React.FC = () => {
       return;
     }
     await deleteHistoryItem(id);
-    // The hook should handle refreshing the list or adjusting pagination
+    // The hook now handles refreshing the list or adjusting pagination
   };
 
   const handleViewDetails = (item: SnowHistoryItemFE) => {
@@ -86,8 +72,26 @@ const SnowHistoryPage: React.FC = () => {
 
   return (
     <div className="page-container snow-history-page">
-      <Card title="ServiceNow Analysis History" bordered={false}>
-        <SnowHistoryFilters onFilter={handleFilterChange} loading={loading} />
+      <Card
+        title="ServiceNow Analysis History"
+        bordered={false}
+        extra={ // Add refresh button here
+          <Button
+            type="default"
+            icon={<ReloadOutlined />}
+            onClick={refreshHistory} // Call the new refreshHistory method
+            loading={loading}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+        }
+      >
+        <SnowHistoryFilters
+          onFilter={handleFilterChange} // This will trigger filter change and page reset in the hook
+          loading={loading}
+          initialFilters={filters} // Pass current filters from the hook to initialize the form
+        />
 
         {error && <Alert message="Error" description={error} type="error" showIcon className="my-4" />}
 
@@ -107,7 +111,7 @@ const SnowHistoryPage: React.FC = () => {
           <Pagination
             current={currentPage}
             total={totalCount}
-            pageSize={10} // Should match PAGE_SIZE in hook
+            pageSize={PAGE_SIZE} // Use the constant PAGE_SIZE
             onChange={handlePageChange}
             showSizeChanger={false}
             className="mt-6 text-center"

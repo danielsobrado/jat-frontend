@@ -217,50 +217,10 @@ const SnowAnalyzeForm: React.FC<SnowAnalyzeFormProps> = ({ onSubmit, loading, di
       disabled={disabled || loading} // Disable entire form if loading or prop-disabled
     >
       <Row gutter={[16, 16]}>
-        {/* Left Column: Raw JSON Input */}
-        <Col span={12}>
-          <div className="flex justify-between items-center mb-2">
-            <Text strong>Raw JSON Input</Text>
-            <Popover
-              content={
-                <div style={{ maxWidth: 300 }}>
-                  <p>Paste the full ServiceNow ticket data in JSON format here.</p>
-                  <p>Changes here will update the fields on the right, and vice-versa.</p>
-                  <p>The system will automatically extract relevant fields for analysis.</p>
-                </div>
-              }
-              title="JSON Input Guide"
-              trigger="hover"
-            >
-              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-            </Popover>
-          </div>
-          <TextArea
-            value={rawJsonInput}
-            onChange={handleRawJsonChange}
-            rows={20}
-            placeholder='Paste your ServiceNow ticket JSON here...'
-            disabled={disabled || loading}
-            style={{ fontFamily: 'monospace' }}
-          />
-          {jsonError && (
-            <Alert message="JSON Error" description={jsonError} type="error" showIcon className="mt-2" />
-          )}
-        </Col>
-
-        {/* Right Column: Extracted Ticket Fields */}
+        {/* Left Column: Extracted Ticket Fields (formerly Right) */}
         <Col span={12}>
           <div className="flex justify-between items-center mb-2">
             <Text strong>Extracted Ticket Fields</Text>
-            <Select
-              value={selectedTicketType}
-              onChange={loadExample} // Load example data when type changes
-              disabled={disabled || loading}
-              style={{ width: 180 }}
-            >
-              <Option value="universal_request">Universal Request</Option>
-              <Option value="incident">Incident</Option>
-            </Select>
             <Tooltip title="Clear all input">
                  <Button icon={<CloseCircleOutlined />} onClick={handleClear} disabled={disabled || loading} />
             </Tooltip>
@@ -268,7 +228,7 @@ const SnowAnalyzeForm: React.FC<SnowAnalyzeFormProps> = ({ onSubmit, loading, di
           <div className="snow-ticket-fields-form" style={{ maxHeight: '450px', overflowY: 'auto', paddingRight: '10px' }}>
             {CORE_SNOW_FIELDS.map((field) => (
               <Form.Item label={_.startCase(field)} name={field} key={field}>
-                {/* Use Input.TextArea for multiline fields like description/notes, otherwise Input */}
+                {/* Render Input or TextArea based on field name */}
                 {field.includes('description') || field.includes('notes') ? (
                   <Input.TextArea
                     autoSize={{ minRows: 1, maxRows: 4 }}
@@ -290,6 +250,42 @@ const SnowAnalyzeForm: React.FC<SnowAnalyzeFormProps> = ({ onSubmit, loading, di
               <Alert message="No data or invalid ticket selected. Load an example or paste JSON." type="info" showIcon />
             )}
           </div>
+        </Col>
+
+        {/* Right Column: Raw JSON Input (formerly Left) */}
+        <Col span={12}>
+          <div className="flex justify-between items-center mb-2">
+            <Text strong>Raw JSON Input</Text>
+            <Popover
+              content={
+                <div>
+                  <p>Paste the full JSON output from a ServiceNow API call (e.g., Table API for an incident or universal request).</p>
+                  <p>The form will attempt to extract the primary ticket object, even if it's nested (e.g., within a "records" array).</p>
+                  <p>Changes made in the "Extracted Ticket Fields" will reflect back into this JSON, and vice-versa.</p>
+                  <p><strong>Examples:</strong></p>
+                  <Select defaultValue={selectedTicketType} onChange={loadExample} style={{ width: '100%' }} disabled={disabled || loading}>
+                    <Option value="universal_request">Universal Request</Option>
+                    <Option value="incident">Incident</Option>
+                  </Select>
+                </div>
+              }
+              title="JSON Input Guide"
+              trigger="hover"
+            >
+              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+            </Popover>
+          </div>
+          <TextArea
+            value={rawJsonInput}
+            onChange={handleRawJsonChange}
+            rows={20}
+            placeholder='Paste your ServiceNow ticket JSON here...'
+            disabled={disabled || loading}
+            style={{ fontFamily: 'monospace' }}
+          />
+          {jsonError && (
+            <Alert message="JSON Error" description={jsonError} type="error" showIcon className="mt-2" />
+          )}
         </Col>
       </Row>
 
