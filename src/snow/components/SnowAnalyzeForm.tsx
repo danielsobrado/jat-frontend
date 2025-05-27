@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Form, Input, Button, Alert, Row, Col, Select, Typography, Popover, Tooltip } from 'antd';
+import { Form, Input, Button, Alert, Row, Col, Select, Typography, Popover, Tooltip, Checkbox } from 'antd';
 import { InfoCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'; // No longer need SyncOutlined for real-time sync
 import { SnowAnalyzeRequestFE } from '../types/snow.types';
 import _ from 'lodash'; // Using lodash for deep cloning and debounce
@@ -9,7 +9,7 @@ const { Option } = Select;
 const { Text } = Typography;
 
 interface SnowAnalyzeFormProps {
-  onSubmit: (ticketData: SnowAnalyzeRequestFE) => void;
+  onSubmit: (request: SnowAnalyzeRequestFE) => void;
   loading: boolean;
   disabled?: boolean;
 }
@@ -175,12 +175,21 @@ const SnowAnalyzeForm: React.FC<SnowAnalyzeFormProps> = ({ onSubmit, loading, di
     },
     [parsedTicketData] // Dependency: parsedTicketData to ensure we work with the latest state
   );
-
   // Handle form submission (from the "Analyze Ticket" button)
   const handleSubmit = () => {
     // Only submit if parsedTicketData is available and there's no JSON parsing error
     if (parsedTicketData && !jsonError) {
-      onSubmit(parsedTicketData);
+      // Get email form values
+      const formValues = form.getFieldsValue(['sendEmail', 'emailRecipient']);
+      
+      // Create the request with ticket data and email options
+      const request: SnowAnalyzeRequestFE = {
+        ...parsedTicketData,
+        sendEmail: formValues.sendEmail || false,
+        emailRecipient: formValues.emailRecipient || undefined,
+      };
+      
+      onSubmit(request);
     } else if (jsonError) {
       // JSON error is already displayed by the Alert component
       // No additional action needed here
@@ -286,6 +295,47 @@ const SnowAnalyzeForm: React.FC<SnowAnalyzeFormProps> = ({ onSubmit, loading, di
           {jsonError && (
             <Alert message="JSON Error" description={jsonError} type="error" showIcon className="mt-2" />
           )}
+        </Col>
+      </Row>      {/* Email Options Section */}
+      <Row gutter={[16, 16]} className="mt-4">
+        <Col span={24}>
+          <div className="p-4 border border-gray-200 rounded-md bg-gray-50">
+            <Text strong className="block mb-3">Email Options</Text>
+            <Row gutter={[16, 8]}>
+              <Col span={8}>
+                <Form.Item name="sendEmail" valuePropName="checked" className="mb-0">
+                  <Checkbox disabled={disabled || loading}>
+                    Send results via email
+                  </Checkbox>
+                </Form.Item>
+              </Col>
+              <Col span={16}>
+                <Form.Item 
+                  name="emailRecipient" 
+                  className="mb-0"
+                  rules={[
+                    {
+                      type: 'email',
+                      message: 'Please enter a valid email address',
+                    },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (getFieldValue('sendEmail') && !value) {
+                          return Promise.reject(new Error('Email recipient is required when sending via email'));
+                        }
+                        return Promise.resolve();
+                      },
+                    }),
+                  ]}
+                >
+                  <Input 
+                    placeholder="recipient@example.com"
+                    disabled={disabled || loading}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>
         </Col>
       </Row>
 

@@ -30,8 +30,17 @@ export interface SnowHistoryPageFE {
   nextCursor?: string;
 }
 
-// Request for analyzing a ticket
-export type SnowAnalyzeRequestFE = Record<string, any>;
+// Request for analyzing a ticket (UPDATED TYPE)
+export interface AnalyzeTicketRequest {
+  // Common fields (flexible based on SNOW data)
+  [key: string]: any;
+  // Specific fields for email functionality
+  sendEmail?: boolean;
+  emailRecipient?: string;
+}
+
+// Renamed from SnowAnalyzeRequestFE to avoid confusion with the flexible ticket data
+export type SnowAnalyzeRequestFE = AnalyzeTicketRequest; 
 
 // Response for analyzing a ticket is the analysis result itself
 export type SnowAnalyzeResponseFE = SnowAnalysisResultFE;

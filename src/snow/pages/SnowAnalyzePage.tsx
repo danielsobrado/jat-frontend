@@ -4,15 +4,14 @@ import { Card, Alert, Spin } from 'antd';
 import { useAuth } from '../../context/AuthContext';
 import SnowAnalyzeForm from '../components/SnowAnalyzeForm';
 import SnowAnalysisResultDisplay from '../components/SnowAnalysisResultDisplay';
-import { SnowAnalysisResultFE } from '../types/snow.types';
+import { SnowAnalysisResultFE, SnowAnalyzeRequestFE } from '../types/snow.types';
 
 const SnowAnalyzePage: React.FC = () => {
   const { apiClient, checkPermission } = useAuth();
   const [analysisResult, setAnalysisResult] = useState<SnowAnalysisResultFE | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
-  const handleAnalysis = async (ticketData: Record<string, any>) => {
+  const handleAnalysis = async (request: SnowAnalyzeRequestFE) => {
     if (!checkPermission('snow:analyze')) {
       setError('You do not have permission to analyze ServiceNow tickets.');
       return;
@@ -21,7 +20,7 @@ const SnowAnalyzePage: React.FC = () => {
     setError(null);
     setAnalysisResult(null);
     try {
-      const result = await apiClient.analyzeSnowTicket(ticketData);
+      const result = await apiClient.analyzeSnowTicket(request);
       setAnalysisResult(result);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to analyze ticket.';
